@@ -300,7 +300,8 @@
           <div class="code-tab" data-code-tab="all">Все файлы</div>
         </div>
         <div class="spacer"></div>
-        <button id="btn-download-code" title="Скачать текущий файл">📥 Скачать</button>
+        <button id="btn-download-code" title="Скачать ZIP со всеми файлами">📥 Скачать ZIP</button>
+        <button id="btn-download-single" title="Скачать только этот HTML файл (JUCE 9 Fixed)">⬇️ Скачать HTML</button>
         <button id="btn-copy-code">📋 Копировать</button>
       </div>
       <pre class="code-content" id="code-output"></pre>
@@ -333,7 +334,7 @@ const FONT_WEIGHTS=[
   {value:"700",name:"Полужирный"},{value:"900",name:"Чёрный"}
 ];
 function cssFont(f){if(f==="system"||!f)return"system-ui";if(f==="Courier New")return"'Courier New',monospace";if(f==="Consolas")return"Consolas,monospace";return f}
-function cppFontField(f,w,h){const name=(f==="system"||!f)?"juce::Font::getDefaultSansSerifFontName()":"\""+f+"\"";const style=(parseInt(w)||500)>=700?"juce::Font::FontStyleFlags::bold":"juce::Font::FontStyleFlags::plain";return"juce::Font(juce::FontOptions().withName("+name+").withHeight("+f1(h)+").withStyle("+style+"))"}
+function cppFontField(f,w,h){const name=(f==="system"||!f)?"juce::Font::getDefaultSansSerifFontName()":"\""+f+"\"";const style=(parseInt(w)||500)>=700?"juce::Font::bold":"juce::Font::plain";return"juce::Font("+name+", "+f1(h)+", "+style+")"}
 let state={version:30,mode:"edit",zoom:"1.0",gridSnap:10,showLeftSidebar:true,showRightSidebar:true,showFrame:true,canvasWidth:800,canvasHeight:520,canvasColor:"#1d1f24",
   theme:{name:"Bitwig Dark",colors:{...THEMES["Bitwig Dark"]}},elements:[],selectedId:null,rightTab:"element",dirHandle:null,dirName:"",presets:{}};
 let statusTimer=null;
@@ -1263,7 +1264,7 @@ function generatePluginEditorH(){
   s+="    std::vector<std::unique_ptr<juce::Component>> canvasElements;\n\n";
   s+="    void buildCanvas();\n";
   s+="    void layoutCanvas();\n\n";
-  s+="    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginAudioProcessorEditor)\n";
+  s+="    JUCE_DECLARE_NON_COPYABLE (PluginAudioProcessorEditor)\n";
   s+="};\n";
   return s;
 }
@@ -1329,7 +1330,7 @@ function generateLookAndFeelH(){
   s+="#include <JuceHeader.h>\n\n";
   s+="// Shared visual defaults for the whole JUCE 9 plugin UI.\n";
   s+="// This file is intentionally not tied to any individual Canvas element.\n";
-  s+="class PluginLookAndFeel : public juce::LookAndFeel_V4\n";
+  s+="class PluginLookAndFeel : public juce::LookAndFeel\n";
   s+="{\n";
   s+="public:\n";
   s+="    PluginLookAndFeel();\n";
@@ -1346,7 +1347,7 @@ function generateLookAndFeelH(){
   s+="    juce::Colour popupHighlightedBackground { juce::Colours::darkgrey };\n";
   s+="    float popupCornerRadius = 6.0f;\n";
   s+="    float popupBorderWidth = 1.0f;\n\n";
-  s+="    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginLookAndFeel)\n";
+  s+="    JUCE_DECLARE_NON_COPYABLE (PluginLookAndFeel)\n";
   s+="};\n";
   return s;
 }
@@ -1547,6 +1548,29 @@ function setupEventListeners(){
     a.href=url;a.download=fileName;a.click();
     URL.revokeObjectURL(url);
     status("Файл "+fileName+" скачан");
+  };
+  
+  // Кнопка скачивания самого HTML файла (JUCE 9 Fixed версия)
+  document.getElementById("btn-download-single").onclick=()=>{
+    fetch(window.location.href)
+      .then(r=>r.blob())
+      .then(b=>{
+        const url=URL.createObjectURL(b);
+        const a=document.createElement("a");
+        a.href=url;a.download="JUCE_UI_Lab_FIXED14_JUCE9.html";a.click();
+        URL.revokeObjectURL(url);
+        status("HTML файл скачан!");
+      })
+      .catch(()=>{
+        // Fallback: сохраняем текущий документ
+        const htmlContent=document.documentElement.outerHTML;
+        const blob=new Blob([htmlContent],{type:"text/html;charset=utf-8"});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url;a.download="JUCE_UI_Lab_FIXED14_JUCE9.html";a.click();
+        URL.revokeObjectURL(url);
+        status("HTML файл скачан!");
+      });
   };
   document.getElementById("btn-download-json").onclick=()=>{const d="data:text/json;charset=utf-8,"+encodeURIComponent(getProjectJSON());const a=document.createElement("a");a.setAttribute("href",d);a.setAttribute("download","juce_ui_layout.json");a.click();status("JSON сохранён!")};
   document.getElementById("btn-import-json").onclick=()=>{document.getElementById("file-input").click()};
