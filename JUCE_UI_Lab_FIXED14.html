@@ -1,0 +1,2222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>JUCE UI Lab v30</title>
+<style>
+:root{
+    --background:#141518;
+    --panel:#1d1f24;
+    --panel2:#23262c;
+    --control:#2a2e36;
+    --border:#32363f;
+    --text:#edeff2;
+    --text-secondary:#a6adba;
+    --accent:#ff6b2c;
+    --font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:'JetBrains Mono','Fira Code',Consolas,Monaco,"Courier New",monospace;
+    color-scheme:dark;
+    /* minimalist tokens — derived from theme vars, never override them */
+    --border-subtle:rgba(255,255,255,.06);
+    --border-strong:rgba(255,255,255,.10);
+    --bg-elevated:rgba(255,255,255,.025);
+    --bg-hover:rgba(255,255,255,.045);
+    --bg-active:rgba(255,255,255,.12);
+    --text-muted:#71747d;
+    --radius-sm:4px;
+    --radius-md:6px;
+    --radius-lg:8px;
+    --space-1:4px;
+    --space-2:8px;
+    --space-3:12px;
+    --space-4:16px;
+    --t-fast:120ms cubic-bezier(.4,0,.2,1);
+    --t-med:200ms cubic-bezier(.4,0,.2,1)
+  }
+  *{box-sizing:border-box;margin:0;padding:0;user-select:none;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.16)}
+  body{background:var(--background);color:var(--text);font-family:var(--font-family);font-size:12px;height:100vh;width:100vw;overflow:hidden;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+
+  /* ---------- Header ---------- */
+  .header{background:var(--panel);border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;padding:0 12px;height:44px;gap:6px;z-index:10;overflow-x:auto;white-space:nowrap;flex-shrink:0}
+  .brand{font-weight:400;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;margin-right:8px;flex-shrink:0;letter-spacing:-.01em}
+  .brand svg{color:var(--text-secondary)}
+  .btn-group{display:flex;align-items:center;gap:2px;flex-shrink:0}
+
+  /* ---------- Form controls (INTERFACE ONLY) ---------- */
+  /* Canvas-internal controls get the original look via the rule below. */
+  button,select,input[type="text"],input[type="number"]{
+    background:var(--bg-elevated);
+    color:var(--text);
+    border:1px solid var(--border-subtle);
+    padding:5px 10px;
+    border-radius:var(--radius-sm);
+    font-size:12px;
+    font-family:var(--font-family);
+    outline:none;
+    transition:background-color var(--t-fast),border-color var(--t-fast),color var(--t-fast);
+    flex-shrink:0;
+    font-weight:400
+  }
+  button{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-weight:400}
+  button:hover{background:var(--bg-hover);color:var(--text);border-color:var(--border-strong)}
+  button:active{background:var(--bg-elevated)}
+  button.active{background:var(--bg-active);color:var(--text);border-color:var(--border-strong);font-weight:400}
+  button:disabled{opacity:.3;cursor:not-allowed;transform:none!important}
+  select{cursor:pointer;background:var(--bg-elevated);border-color:var(--border-subtle);color:var(--text)}
+  select:hover{background:var(--bg-hover);color:var(--text);border-color:var(--border-strong)}
+  select:focus{border-color:var(--border-strong);color:var(--text)}
+  .spacer{flex:1;min-width:4px}
+
+  /* ---------- Layout grid ---------- */
+  .main-container{display:grid;grid-template-columns:220px 1fr 320px;flex:1;overflow:hidden;transition:grid-template-columns var(--t-med) ease}
+  .main-container.hide-left{grid-template-columns:0 1fr 320px}
+  .main-container.hide-right{grid-template-columns:220px 1fr 0}
+  .main-container.hide-both{grid-template-columns:0 1fr 0}
+  #sidebar-left{grid-column:1}.center-container{grid-column:2}#sidebar-right{grid-column:3}
+
+  /* ---------- Sidebars ---------- */
+  .sidebar{background:var(--panel);border-right:1px solid var(--border-subtle);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+  .sidebar.collapsed{display:none}
+  .sidebar.right{border-right:none;border-left:1px solid var(--border-subtle)}
+  .sidebar-header{padding:0 12px;height:38px;font-weight:400;font-size:12px;color:var(--text-muted);border-bottom:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center;background:transparent}
+  .sidebar-tabs{display:flex;gap:4px;padding:0 8px;height:38px;border-bottom:1px solid var(--border-subtle);align-items:center;flex-shrink:0}
+  .sidebar-tab{flex:1;height:26px;padding:0 10px;text-align:center;cursor:pointer;font-weight:400;font-size:12px;color:var(--text-secondary);background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);transition:background-color var(--t-fast),border-color var(--t-fast),color var(--t-fast);display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+  .sidebar-tab:hover{color:var(--text);background:var(--bg-hover);border-color:var(--border-strong)}
+  .sidebar-tab.active{color:var(--text);background:var(--bg-active);border-color:var(--border-strong);font-weight:400}
+
+  /* ---------- Element list ---------- */
+  .element-list{list-style:none;padding:6px;display:flex;flex-direction:column;gap:1px;overflow-y:auto;flex:1}
+  .element-item{padding:7px 10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-radius:var(--radius-sm);transition:background-color var(--t-fast),color var(--t-fast);font-size:12px;color:var(--text-secondary)}
+  .element-item:hover{background:var(--bg-elevated);color:var(--text)}
+  .element-item.selected{background:var(--bg-active);color:var(--text);font-weight:400}
+  .folder-info{padding:12px 16px;border-top:1px solid var(--border-subtle);font-size:12px;color:var(--text-muted);background:transparent;display:flex;flex-direction:column;gap:4px}
+
+  /* ---------- Center / Canvas ---------- */
+  .center-container{display:flex;flex-direction:column;height:100%;overflow:hidden;background:var(--background)}
+  .canvas-toolbar{height:38px;background:var(--panel);border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0;font-size:12px;color:var(--text-muted)}
+  .canvas-toolbar>span{color:var(--text-muted);font-size:12px;font-weight:400}
+  .canvas-wrapper{flex:1;overflow:auto;position:relative}
+  .canvas-wrapper.panning,.canvas-wrapper.panning *{cursor:grabbing!important}
+  .canvas-container{transform-origin:0 0}
+  .canvas{background:var(--panel);position:relative;overflow:hidden;background-image:radial-gradient(circle,rgba(255,255,255,.06) 1px,transparent 1px);background-size:20px 20px;transform-origin:0 0}
+
+  /* ============ CANVAS ELEMENTS — DO NOT TOUCH ============ */
+  /* Structural rules only. Visual look of knob/slider/button/etc. on the
+     canvas is driven by inline styles set in JS, EXCEPT for <button>/<select>/
+     <input> inside .canvas-element, which inherit from the global form-control
+     rule. The rule below restores the ORIGINAL look for those controls so
+     button_1 / combo_1 / text_1 / tabs_1 keep their original appearance. */
+  .canvas-element{position:absolute;box-sizing:border-box;display:flex;cursor:move;border-radius:var(--el-radius,6px)}
+  .canvas-element.selected{z-index:99}
+  .canvas-element.test{cursor:default}
+  .canvas-element.edit .control,.canvas-element.edit .control *{pointer-events:none!important}
+  .canvas-element.edit .element-value{pointer-events:none!important}
+  .canvas .canvas-element:hover{background:transparent!important}
+  .canvas .canvas-element button,
+  .canvas .canvas-element select,
+  .canvas .canvas-element input[type="text"],
+  .canvas .canvas-element input[type="number"]{
+    background:var(--control);
+    color:var(--text);
+    border:1px solid var(--border);
+    padding:4px 8px;
+    border-radius:6px;
+    font-size:12px
+  }
+  .canvas .canvas-element button:hover{background:var(--control);border-color:var(--border)}
+  .canvas .canvas-element select:hover,.canvas .canvas-element input:hover{background:var(--control);border-color:var(--border)}
+  .resize-handle{position:absolute;width:9px;height:9px;background:#fff;border:1px solid var(--accent);border-radius:2px;display:none;z-index:100;pointer-events:auto}
+  .rh-nw{top:-5px;left:-5px;cursor:nwse-resize}.rh-ne{top:-5px;right:-5px;cursor:nesw-resize}
+  .rh-se{bottom:-5px;right:-5px;cursor:nwse-resize}.rh-sw{bottom:-5px;left:-5px;cursor:nesw-resize}
+  .rh-n{top:-5px;left:calc(50% - 4px);cursor:ns-resize}.rh-s{bottom:-5px;left:calc(50% - 4px);cursor:ns-resize}
+  .rh-w{top:calc(50% - 4px);left:-5px;cursor:ew-resize}.rh-e{top:calc(50% - 4px);right:-5px;cursor:ew-resize}
+
+  /* Element label/value — preserve original CSS-var-driven look */
+  .element-label{font-size:var(--el-label-font-size,12px);color:var(--el-label-color,#a6adba);background:var(--el-label-bg,transparent);border:var(--el-label-border-width,0px) solid var(--el-label-border-color,transparent);border-radius:var(--el-label-border-radius,0px);padding:var(--el-label-pad-v,0px) var(--el-label-pad-h,0px);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:400;pointer-events:none;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  .element-value{font-size:var(--el-value-font-size,12px);color:var(--el-value-color,#edeff2);background:var(--el-value-bg,transparent);border:var(--el-value-border-width,0px) solid var(--el-value-border-color,transparent);border-radius:var(--el-value-border-radius,0px);padding:var(--el-value-pad-v,0px) var(--el-value-pad-h,0px);text-align:center;font-family:monospace;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  .control{flex:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;position:relative;box-sizing:border-box;min-height:0;min-width:0}
+  /* ============ END CANVAS ELEMENTS ============ */
+
+  /* ---------- Code section ---------- */
+  .code-resizer{height:4px;cursor:ns-resize;background:transparent;flex-shrink:0;position:relative;z-index:5;transition:background-color var(--t-fast)}
+  .code-resizer:hover,.code-resizer.active{background:var(--accent)}
+  .code-section{height:220px;min-height:80px;background:var(--panel);border-top:1px solid var(--border-subtle);display:flex;flex-direction:column}
+  .code-section.hidden{display:none}
+  .code-toolbar{display:flex;align-items:center;padding:6px 12px;background:transparent;border-bottom:1px solid var(--border-subtle);gap:8px}
+  .code-tabs{display:flex;gap:2px}
+  .code-tab{padding:4px 10px;font-size:12px;border-radius:var(--radius-sm);color:var(--text-muted);background:transparent;font-weight:400}
+  .code-tab.active{color:var(--text);background:var(--bg-active)}
+  .code-content{flex:1;padding:12px 16px;font-family:var(--font-mono);font-size:12px;color:#abb2bf;background:var(--background);overflow:auto;white-space:pre;line-height:1.6}
+
+  /* ---------- Inspector ---------- */
+  .inspector-content{padding:8px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px}
+  .inspector-section{margin-bottom:0;background:var(--bg-elevated);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px;display:flex;flex-direction:column;gap:2px}
+  .inspector-title{font-size:12px;font-weight:400;color:var(--text-muted);margin-bottom:4px}
+  .inspector-subtitle{font-size:12px;font-weight:400;color:var(--text-muted);margin:6px 0 2px}
+  .prop-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;gap:8px;min-height:26px}
+  .prop-row.prop-row-pair{justify-content:flex-start;gap:6px}
+  .prop-row.prop-row-pair .prop-label{flex:0 0 auto;min-width:0}
+  .prop-row.prop-row-pair .prop-input{flex:0 0 auto;min-width:20px}
+  .prop-label{font-size:12px;color:var(--text-secondary);flex:1}
+  .prop-input{flex:0 0 auto;min-width:20px;font-size:12px;background:var(--bg-hover);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);color:var(--text);width:auto;font-weight:400}
+  .prop-input:hover{background:var(--bg-elevated);border-color:var(--border-strong)}
+  .prop-input:focus{background:var(--bg-elevated);border-color:var(--border-strong);color:var(--text)}
+  .inspector-content input,.inspector-content select,.inspector-content button{padding:4px 8px}
+  .inspector-content textarea.prop-input{resize:none;overflow-y:hidden;line-height:1.6;padding:4px 8px;min-height:26px;font-family:var(--font-family);font-size:12px}
+  .inspector-content textarea.prop-input:focus{outline:none;background:var(--bg-elevated);border-color:var(--border-strong);color:var(--text)}
+  .inspector-content input[type="color"]{padding:0;height:24px;border-radius:var(--radius-sm);width:40px;min-width:40px;flex:0 0 40px}
+  .inspector-content button{min-height:24px;background:var(--bg-hover);border:1px solid var(--border-subtle);color:var(--text-secondary)}
+  .inspector-content button:hover{background:var(--bg-elevated);color:var(--text);border-color:var(--border-strong)}
+  .prop-input[type="color"]{padding:0;height:24px;cursor:pointer;border:1px solid var(--border-subtle);width:40px;min-width:40px;flex:0 0 40px}
+  .inspector-content input[type="checkbox"]{accent-color:var(--text-secondary);background:var(--control);border:1px solid var(--border);width:14px;height:14px;border-radius:3px;cursor:pointer;flex:0 0 14px;min-width:14px}
+  .inspector-content select{min-width:80px;flex:0 1 auto}
+  .inspector-content select option,.inspector-content select optgroup{background:var(--panel);color:var(--text)}
+  .inspector-content select option:checked,.inspector-content select optgroup:before{background:var(--control)!important;color:var(--text)!important}
+  .inspector-content select:hover,.inspector-content select:focus{background-color:var(--bg-hover);color:var(--text)}
+  /* Theme preset select: same look as other interface selects — no accent colour */
+  #theme-preset-select{color:var(--text)!important;background:var(--bg-elevated)!important;border:1px solid var(--border-subtle)!important}
+  #theme-preset-select option:checked{background:var(--control)!important;color:var(--text)!important}
+  #theme-preset-select option{background:var(--panel)!important;color:var(--text)!important}
+
+  /* ---------- Custom dropdown (combo_1-style for inspector selects) ---------- */
+  .cs-wrap{position:relative;display:inline-flex;flex:0 0 auto;min-width:0}
+  .cs-native{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;opacity:0!important;pointer-events:none!important}
+  .cs-button{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px;background:var(--bg-hover);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:var(--font-family);font-weight:400;cursor:pointer;white-space:nowrap;min-width:60px;outline:none;transition:background-color var(--t-fast),border-color var(--t-fast);user-select:none}
+  .cs-button:hover{background:var(--bg-elevated);border-color:var(--border-strong)}
+  .cs-button:focus{border-color:var(--border-strong)}
+  .cs-button.cs-open{background:var(--bg-elevated);border-color:var(--border-strong)}
+  .cs-text{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;text-align:left}
+  .cs-arrow{flex:0 0 auto;opacity:.6;font-size:10px;line-height:1}
+  .cs-menu{position:fixed;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:10000;display:none;padding:2px}
+  .cs-menu.open{display:block}
+  .cs-item{padding:6px 10px;cursor:pointer;color:var(--text);white-space:nowrap;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;border-radius:var(--radius-sm);transition:background-color var(--t-fast)}
+  .cs-item:hover{background:var(--bg-hover)}
+  .cs-item.selected{background:var(--bg-active)}
+  .cs-check{opacity:0;color:var(--text);font-size:11px;flex:0 0 auto}
+  .cs-item.selected .cs-check{opacity:1}
+
+  /* ---------- Custom combo menu (canvas combo_1) ----------
+     Driven by combo element's own settings via CSS custom properties:
+       --cb-bg = menuColor       --cb-bc = menuBorderColor
+       --cb-br = menuCornerRadius --cb-bw = menuBorderWidth
+       --cb-hc = menuHoverColor                                   */
+  .cb-menu{position:fixed;background:var(--cb-bg,#1d1f24);border:var(--cb-bw,1px) solid var(--cb-bc,#32363f);border-radius:var(--cb-br,6px);overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:10000;display:none;padding:2px;font-family:var(--font-family)}
+  .cb-menu.open{display:block}
+  .cb-item{padding:6px 10px;cursor:pointer;color:var(--text);white-space:nowrap;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;border-radius:4px;transition:background-color var(--t-fast)}
+  .cb-item:hover{background:var(--cb-hc,#2a2e36)}
+  .cb-item.selected{background:var(--cb-hc,#2a2e36)}
+  .cb-label{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis}
+  .cb-check{opacity:0;color:var(--text);font-size:11px;flex:0 0 auto}
+  .cb-item.selected .cb-check{opacity:1}
+
+  /* ---------- Footer ---------- */
+  .footer{height:24px;background:var(--panel);border-top:1px solid var(--border-subtle);display:flex;align-items:center;padding:0 12px;font-size:12px;color:var(--text-muted);flex-shrink:0}
+
+  /* ---------- Icon buttons ---------- */
+  .icon-btn{padding:4px 8px;min-width:26px;height:26px;font-size:12px;font-family:var(--font-family);color:var(--text-secondary)}
+
+  /* ---------- Refine inline header dividers (set via inline style) ---------- */
+  .header div[style*="width:1px"]{opacity:.5}
+
+  /* ---------- Refined count badge (inline styled, soften it) ---------- */
+  #el-count-badge{background:var(--bg-hover)!important;color:var(--text-secondary)!important;border:1px solid var(--border-subtle)!important;font-weight:400!important;font-size:12px!important;padding:1px 8px!important;border-radius:10px!important;letter-spacing:.02em}
+
+  /* ---------- Toggle code button icon alignment ---------- */
+  #btn-toggle-code svg{display:block}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="brand"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5v14M7 8v8M22 10v4M2 10v4"/></svg>JUCE UI Lab</div>
+  <div class="btn-group">
+    <button id="btn-toggle-left">◀ Структура UI</button>
+    <button id="btn-toggle-code" title="Показать/скрыть панель кода"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/><path d="m15 8-3 3-3-3"/><path d="M12 11V5"/></svg>Код</button>
+    <button id="btn-toggle-right">Инспектор ▶</button>
+  </div>
+  <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
+  <select id="add-type-select">
+    <option value="knob">Knob</option><option value="slider">Slider</option><option value="button">Button</option>
+    <option value="toggle">Toggle</option><option value="combo">Combo</option><option value="label">Label</option>
+    <option value="text">Text</option><option value="meter">Meter</option><option value="waveform">Waveform</option>
+    <option value="group">Group</option><option value="tabs">Tabs</option><option value="valuedisplay">ValueDisplay</option>
+  </select>
+  <button id="btn-add">➕ Добавить</button>
+  <button id="btn-duplicate">📋 Клон</button>
+  <button id="btn-delete">🗑️ Удалить</button>
+  <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
+  <div class="btn-group">
+    <button id="mode-edit" class="active">✏️ Редактирование</button>
+    <button id="mode-test">🎛️ Проверка</button>
+  </div>
+  <button id="btn-toggle-frame" class="active">🔲 Рамка</button>
+  <div class="spacer"></div>
+  <button id="btn-connect-folder">📁 Папка</button>
+  <button id="btn-save-folder">💾 Сохранить</button>
+  <button id="btn-load-folder">Загрузить</button>
+  <div style="width:1px;height:18px;background:var(--border);margin:0 2px"></div>
+  <button id="btn-download-json">Экспорт JSON</button>
+  <button id="btn-import-json">Импорт JSON</button>
+  <input type="file" id="file-input" accept=".json" style="display:none">
+</header>
+<div class="main-container" id="main-grid">
+  <aside class="sidebar" id="sidebar-left">
+    <div class="sidebar-header"><span>Структура UI</span><span id="el-count-badge" style="background:var(--control);padding:2px 6px;border-radius:10px;font-size:12px">0</span></div>
+    <ul class="element-list" id="element-list"></ul>
+    <div class="folder-info"><div style="font-weight:400">Статус:</div><div id="folder-status-text">Папка не подключена</div></div>
+  </aside>
+  <main class="center-container">
+    <div class="canvas-toolbar">
+      <span>Сетка:</span>
+      <select id="grid-snap-select" style="padding:2px 6px"><option value="0">Выкл</option><option value="5">5 px</option><option value="10" selected>10 px</option><option value="20">20 px</option></select>
+      <div style="width:1px;height:16px;background:var(--border);margin:0 4px"></div>
+      <span>Выравнивание:</span>
+      <button class="icon-btn" id="align-left">├</button>
+      <button class="icon-btn" id="align-center-h">┼</button>
+      <button class="icon-btn" id="align-right">┤</button>
+      <button class="icon-btn" id="align-top">┬</button>
+      <button class="icon-btn" id="align-center-v">┼</button>
+      <button class="icon-btn" id="align-bottom">┴</button>
+      <div class="spacer"></div>
+      <span>Масштаб:</span>
+      <select id="zoom-select" style="padding:2px 6px"><option value="0.5">50%</option><option value="0.75">75%</option><option value="1.0" selected>100%</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="2">200%</option><option value="2.5">250%</option><option value="3">300%</option><option value="3.5">350%</option><option value="4">400%</option></select>
+      <div style="width:1px;height:16px;background:var(--border);margin:0 4px"></div>
+      <span>Фон:</span>
+      <input type="color" id="canvas-color-picker" value="#1d1f24" title="Цвет фона канваса" style="padding:0;width:26px;height:22px;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);cursor:pointer;background:transparent">
+    </div>
+    <div class="canvas-wrapper" id="canvas-wrapper"><div class="canvas-container" id="canvas-container"><div class="canvas" id="canvas"></div></div></div>
+    <div class="code-resizer" id="code-resizer"></div>
+    <div class="code-section" id="code-section">
+      <div class="code-toolbar">
+        <div class="code-tabs">
+          <div class="code-tab active" data-code-tab="editor-h">PluginEditor.h</div>
+          <div class="code-tab" data-code-tab="editor-cpp">PluginEditor.cpp</div>
+          <div class="code-tab" data-code-tab="elements-h">CanvasElements.h</div>
+          <div class="code-tab" data-code-tab="laf-h">LookAndFeel.h</div>
+          <div class="code-tab" data-code-tab="laf-cpp">LookAndFeel.cpp</div>
+          <div class="code-tab" data-code-tab="all">Все файлы</div>
+        </div>
+        <div class="spacer"></div>
+        <button id="btn-download-code" title="Скачать текущий файл">📥 Скачать</button>
+        <button id="btn-copy-code">📋 Копировать</button>
+      </div>
+      <pre class="code-content" id="code-output"></pre>
+    </div>
+  </main>
+  <aside class="sidebar right" id="sidebar-right">
+    <div class="sidebar-tabs">
+      <div class="sidebar-tab active" data-right-tab="element">Элемент</div>
+      <div class="sidebar-tab" data-right-tab="theme">Тема / Размер</div>
+    </div>
+    <div class="inspector-content" id="inspector-container"></div>
+  </aside>
+</div>
+<footer class="footer" id="footer-status">Готово.</footer>
+<script>
+"use strict";
+const THEMES={
+  "Bitwig Dark":{background:"#141518",panel:"#1d1f24",panel2:"#23262c",control:"#2a2e36",border:"#32363f",text:"#edeff2",textSecondary:"#a6adba",accent:"#ff6b2c"},
+  "Ableton Dark":{background:"#1e1e1e",panel:"#282828",panel2:"#333",control:"#3c3c3c",border:"#4a4a4a",text:"#dfdfdf",textSecondary:"#9e9e9e",accent:"#ffc53d"},
+  "Cyan Neon":{background:"#0c1017",panel:"#151c28",panel2:"#1c2636",control:"#253347",border:"#2e3f59",text:"#e6f1ff",textSecondary:"#88a2c4",accent:"#00f0ff"}
+};
+const FONTS=[
+  {value:"system",name:"Системный"},{value:"Arial",name:"Arial"},{value:"Verdana",name:"Verdana"},
+  {value:"Tahoma",name:"Tahoma"},{value:"Trebuchet MS",name:"Trebuchet MS"},{value:"Georgia",name:"Georgia"},
+  {value:"Times New Roman",name:"Times New Roman"},{value:"Courier New",name:"Courier New"},
+  {value:"Consolas",name:"Consolas"},{value:"Segoe UI",name:"Segoe UI"},{value:"Roboto",name:"Roboto"}
+];
+const FONT_WEIGHTS=[
+  {value:"300",name:"Тонкий"},{value:"400",name:"Обычный"},{value:"500",name:"Средний"},
+  {value:"700",name:"Полужирный"},{value:"900",name:"Чёрный"}
+];
+function cssFont(f){if(f==="system"||!f)return"system-ui";if(f==="Courier New")return"'Courier New',monospace";if(f==="Consolas")return"Consolas,monospace";return f}
+function cppFontField(f,w,h){const name=(f==="system"||!f)?"juce::Font::getDefaultSansSerifFontName()":"\""+f+"\"";const style=(parseInt(w)||500)>=700?"juce::Font::FontStyleFlags::bold":"juce::Font::FontStyleFlags::plain";return"juce::Font(juce::FontOptions().withName("+name+").withHeight("+f1(h)+").withStyle("+style+"))"}
+let state={version:30,mode:"edit",zoom:"1.0",gridSnap:10,showLeftSidebar:true,showRightSidebar:true,showFrame:true,canvasWidth:800,canvasHeight:520,canvasColor:"#1d1f24",
+  theme:{name:"Bitwig Dark",colors:{...THEMES["Bitwig Dark"]}},elements:[],selectedId:null,rightTab:"element",dirHandle:null,dirName:"",presets:{}};
+let statusTimer=null;
+function status(m){const el=document.getElementById("footer-status");el.textContent=m;if(statusTimer)clearTimeout(statusTimer);statusTimer=setTimeout(()=>{el.textContent="Готово."},3500)}
+function num(x){const n=Number(x);return Number.isFinite(n)?n:0}
+function tr(s){return String(s??"").trim()}
+function hexA(h){h=tr(h).replace("#","");if(h.length===3)h=h.split("").map(c=>c+c).join("");if(h.length===6)return"#FF"+h.toUpperCase();if(h.length===8)return"#"+h.toUpperCase();return"#FF000000"}
+function f1(n){const v=Math.round(num(n)*10)/10;return v===Math.floor(v)?v+".0f":v+"f"}
+function formatVal(el){const d=(String(el.step).split(".")[1]||"").length;return Number(el.value).toFixed(Math.min(4,d))}
+function snapToStep(v,step){const d=(String(step).split(".")[1]||"").length;return Number(Number(v).toFixed(d))}
+function clampValue(el,v){let nv=Number(v);const min=num(el.min),max=num(el.max),step=num(el.step);if(step>0)nv=min+Math.round((nv-min)/step)*step;nv=Math.max(min,Math.min(max,nv));if(step>0)nv=snapToStep(nv,step);return nv}
+function escapeCpp(s){return String(s??"").replace(/\\/g,"\\\\").replace(/"/g,'\\"').replace(/\n/g,"\\n")}
+function safeVar(id){
+  let s=String(id??"el").replace(/[^a-zA-Z0-9_]/g,"");
+  if(!s)s="el";
+  if(/^[0-9]/.test(s))s="ui_"+s;
+  const cppKeywords=new Set(["alignas","alignof","and","and_eq","asm","auto","bitand","bitor","bool","break","case","catch","char","char8_t","char16_t","char32_t","class","compl","concept","const","consteval","constexpr","constinit","const_cast","continue","co_await","co_return","co_yield","decltype","default","delete","do","double","dynamic_cast","else","enum","explicit","export","extern","false","float","for","friend","goto","if","inline","int","long","mutable","namespace","new","noexcept","not","not_eq","nullptr","operator","or","or_eq","private","protected","public","reflexpr","register","reinterpret_cast","requires","return","short","signed","sizeof","static","static_assert","static_cast","struct","switch","synchronized","template","this","thread_local","throw","true","try","typedef","typeid","typename","union","unsigned","using","virtual","void","volatile","wchar_t","while","xor","xor_eq"]);
+  if(cppKeywords.has(s))s="ui_"+s;
+  return s;
+}
+function trimKeysDeep(obj){
+  if(Array.isArray(obj))return obj.map(trimKeysDeep);
+  if(obj&&typeof obj==="object"){const r={};Object.keys(obj).forEach(k=>{r[k.trim()]=trimKeysDeep(obj[k])});return r}
+  return obj;
+}
+function isValidId(id){return /^[A-Za-z_][A-Za-z0-9_]*$/.test(String(id||""))}
+function idExists(id,ignoreId=null){return state.elements.some(e=>e.id===id&&e.id!==ignoreId)}
+function generateUniqueId(type){
+  const base=String(type||"element").replace(/[^A-Za-z0-9_]/g,"")||"element";
+  let i=1,candidate=base+"_"+i;
+  while(idExists(candidate))candidate=base+"_"+(++i);
+  return candidate;
+}
+function makePresetData(el){
+  const p=JSON.parse(JSON.stringify(el));
+  delete p.id; delete p.x; delete p.y;
+  return p;
+}
+const BASE_EL={options:"",text:"",accent:"#ff6b2c",
+  cornerRadius:8,fontSize:13,labelFontSize:13,labelColor:"#a6adba",valueFontSize:13,valueColor:"#edeff2",
+  paddingTop:2,paddingRight:2,paddingBottom:2,paddingLeft:2,
+  gapAfterLabel:2,gapAfterControl:2,gapAfterValue:2,tabGap:4,
+  dragSensitivity:1,paramId:"",labelFixedWidth:80,valueFixedWidth:60,
+  labelFont:"system",valueFont:"system",labelFontWeight:"500",valueFontWeight:"500",
+  labelBorderColor:"#141414",labelBgColor:"#1f1f1f",labelBorderRadius:4,labelBorderWidth:1,labelPadV:2,labelPadH:2,labelWidthMode:"text",labelBorderEnabled:true,
+  valueBorderColor:"#141414",valueBgColor:"#1f1f1f",valueBorderRadius:4,valueBorderWidth:1,valuePadV:2,valuePadH:2,valueWidthMode:"element",valueBorderEnabled:true,
+  menuColor:"#1d1f24",menuBorderColor:"#32363f",menuCornerRadius:6,menuHoverColor:"#2a2e36",menuBorderWidth:1,
+  showLabel:true,showValue:false,layoutPreset:"vertical:label-control-value",visible:true,enabled:true};
+const DEFAULT_PROJECT=[
+  {...BASE_EL,labelPadH:2,valueWidthMode:"fixed",showValue:true,min:0,max:100,step:1,value:50,def:50,style:"rotary",id:"knob_1",type:"knob",label:"knob_1",x:10,y:10,w:100,h:150},
+  {...BASE_EL,valueWidthMode:"fixed",showValue:true,min:0,max:100,step:1,value:75,def:75,style:"vertical",id:"slider_1",type:"slider",label:"slider_1",x:120,y:10,w:100,h:150},
+  {...BASE_EL,valueWidthMode:"element",showValue:false,value:0,style:"toggle",id:"button_1",type:"button",label:"button_1",x:20,y:190,w:100,h:60},
+  {...BASE_EL,valueWidthMode:"element",showValue:false,value:0,style:"switch",id:"toggle_1",type:"toggle",label:"toggle_1",x:600,y:190,w:100,h:60},
+  {...BASE_EL,options:"Option 1, Option 2, Option 3",valueWidthMode:"element",showValue:false,value:1,id:"combo_1",type:"combo",label:"combo_1",x:140,y:190,w:100,h:60},
+  {...BASE_EL,valueWidthMode:"element",showLabel:false,showValue:false,id:"label_1",type:"label",label:"label_1",x:490,y:310,w:120,h:40},
+  {...BASE_EL,text:"Enter text...",valueWidthMode:"element",showValue:false,id:"text_1",type:"text",label:"text_1",x:260,y:190,w:100,h:60},
+  {...BASE_EL,valueWidthMode:"fixed",showValue:true,min:0,max:100,step:1,value:75,peakVal:85,style:"vertical",id:"meter_1",type:"meter",label:"meter_1",x:360,y:10,w:100,h:150},
+  {...BASE_EL,valueWidthMode:"element",showValue:false,id:"waveform_1",type:"waveform",label:"waveform_1",x:30,y:300,w:200,h:100},
+  {...BASE_EL,valueWidthMode:"element",showValue:false,id:"group_1",type:"group",label:"group_1",x:250,y:300,w:200,h:100},
+  {...BASE_EL,options:"Tab 1, Tab 2, Tab 3",valueWidthMode:"element",showValue:false,value:1,id:"tabs_1",type:"tabs",label:"tabs_1",x:380,y:190,w:200,h:60},
+  {...BASE_EL,valueWidthMode:"fixed",showValue:true,min:-60,max:12,step:0.1,value:0,def:0,style:"valuedisplay",id:"valuedisplay_1",type:"valuedisplay",label:"valuedisplay_1",x:240,y:10,w:100,h:50}
+];
+const USER_DEFAULTS=(()=>{const d={};DEFAULT_PROJECT.forEach(e=>{if(!d[e.type]){const c=JSON.parse(JSON.stringify(e));delete c.id;delete c.x;delete c.y;d[e.type]=c}});return d})();
+
+function normalizeImportedElement(raw){
+  const r=trimKeysDeep(raw||{});
+  const d=getDefaultElementProps(r.type||"knob");
+  const e2=Object.assign({},d,r);
+  e2.paramId=e2.paramId||"";
+  e2.paddingTop=num(e2.paddingTop??2);e2.paddingRight=num(e2.paddingRight??2);e2.paddingBottom=num(e2.paddingBottom??2);e2.paddingLeft=num(e2.paddingLeft??2);
+  e2.gapAfterLabel=num(e2.gapAfterLabel??2);e2.gapAfterControl=num(e2.gapAfterControl??2);e2.gapAfterValue=num(e2.gapAfterValue??2);e2.tabGap=num(e2.tabGap??4);
+  e2.showLabel=e2.showLabel!==false;
+  e2.showValue=e2.showValue===true;
+  if(!e2.layoutPreset)e2.layoutPreset="vertical:label-control-value";
+  e2.value=num(e2.value);
+  e2.def=num(e2.def??e2.value);
+  e2.x=num(e2.x);e2.y=num(e2.y);e2.w=Math.max(20,num(e2.w)||80);e2.h=Math.max(20,num(e2.h)||60);
+  return e2;
+}
+function repairImportedIds(elements){
+  const used=new Set();
+  return elements.map(e=>{
+    let id=String(e.id||"");
+    if(!isValidId(id)||used.has(id)){
+      const base=isValidId(id)?id:(String(e.type||"element").replace(/[^A-Za-z0-9_]/g,"")||"element");
+      let n=1,candidate=base+"_"+n;
+      while(used.has(candidate))candidate=base+"_"+(++n);
+      id=candidate;
+    }
+    used.add(id);e.id=id;return e;
+  });
+}
+function loadProjectFromJSON(js){
+  try{
+    const data=JSON.parse(js);
+    state.elements=repairImportedIds((data.elements||[]).map(normalizeImportedElement));
+    if(data.theme&&data.theme.colors){state.theme={...state.theme,...data.theme,colors:{...state.theme.colors,...data.theme.colors}};applyThemeCSS()}
+    state.selectedId=(data.selectedId&&state.elements.some(e=>e.id===data.selectedId))?data.selectedId:(state.elements[0]?state.elements[0].id:null);
+    if(data.zoom!==undefined)state.zoom=String(data.zoom);
+    if(data.gridSnap!==undefined)state.gridSnap=Math.max(0,parseInt(data.gridSnap)||0);
+    if(data.showLeftSidebar!==undefined)state.showLeftSidebar=!!data.showLeftSidebar;
+    if(data.showRightSidebar!==undefined)state.showRightSidebar=!!data.showRightSidebar;
+    if(data.showFrame!==undefined)state.showFrame=!!data.showFrame;
+    if(data.rightTab==="theme"||data.rightTab==="element")state.rightTab=data.rightTab;
+    if(data.mode==="edit"||data.mode==="test")state.mode=data.mode;
+    recalcCanvasSize();applyZoom();updateLayoutState();
+    const zoomSelect=document.getElementById("zoom-select");
+    if(zoomSelect){
+      zoomSelect.value=state.zoom;
+      const zt=zoomSelect.parentElement&&zoomSelect.parentElement.querySelector(".cs-text");
+      if(zt&&zoomSelect.options[zoomSelect.selectedIndex])zt.textContent=zoomSelect.options[zoomSelect.selectedIndex].textContent;
+    }
+    const gridSelect=document.getElementById("grid-snap-select");
+    if(gridSelect){
+      gridSelect.value=String(state.gridSnap);
+      const gt=gridSelect.parentElement&&gridSelect.parentElement.querySelector(".cs-text");
+      if(gt&&gridSelect.options[gridSelect.selectedIndex])gt.textContent=gridSelect.options[gridSelect.selectedIndex].textContent;
+    }
+    document.getElementById("mode-edit").classList.toggle("active",state.mode==="edit");
+    document.getElementById("mode-test").classList.toggle("active",state.mode==="test");
+    document.getElementById("btn-toggle-frame").classList.toggle("active",!!state.showFrame);
+    document.getElementById("btn-toggle-left").classList.toggle("active",!!state.showLeftSidebar);
+    document.getElementById("btn-toggle-right").classList.toggle("active",!!state.showRightSidebar);
+    document.querySelectorAll(".sidebar-tab[data-right-tab]").forEach(tab=>tab.classList.toggle("active",tab.dataset.rightTab===state.rightTab));
+    if(data.codePanelHeight!==undefined){const cs=document.getElementById("code-section");if(cs)cs.style.height=Math.max(80,Number(data.codePanelHeight)||220)+"px"}
+    if(data.canvasColor){state.canvasColor=data.canvasColor;const ccp=document.getElementById("canvas-color-picker");if(ccp)ccp.value=state.canvasColor}
+    updateModeActionState();
+    refreshProjectView();
+    status("Проект загружен!");
+  }catch(e){status("Ошибка чтения JSON: "+e.message)}
+}
+function getPresetsStore(){return state.presets||{}}
+async function savePresetsStore(s){
+  state.presets=s;
+  if(!state.dirHandle){status("Подключи папку");return}
+  try{const ok=await requestDirPermission();if(!ok){status("Нет доступа");return}
+    let fh;try{fh=await state.dirHandle.getFileHandle("Presets.json",{create:true})}catch(e){fh=await state.dirHandle.getFileHandle("Presets.json")}
+    const w=await fh.createWritable();await w.write(JSON.stringify(state.presets,null,2));await w.close();status("Пресеты сохранены");
+  }catch(e){status("Не удалось сохранить")}
+}
+async function loadPresetsFromFile(){
+  if(!state.dirHandle)return;
+  try{const ok=await requestDirPermission();if(!ok)return;
+    let fh;try{fh=await state.dirHandle.getFileHandle("Presets.json")}catch(e){state.presets={};return}
+    const file=await fh.getFile();const text=await file.text();state.presets=JSON.parse(text)||{};renderInspector();status("Пресеты загружены");
+  }catch(e){state.presets={};status("Не удалось загрузить")}
+}
+function getDefaultElementProps(type){const st=getPresetsStore();if(st[type]&&st[type].default)return JSON.parse(JSON.stringify(st[type].default));if(USER_DEFAULTS[type])return JSON.parse(JSON.stringify(USER_DEFAULTS[type]));const c={...BASE_EL};
+  switch(type){case"knob":return{...c,min:0,max:100,step:1,value:50,def:50,style:"rotary",showValue:true};case"slider":return{...c,min:0,max:100,step:1,value:75,def:75,style:"vertical",showValue:true};case"button":return{...c,value:0,style:"momentary",showLabel:false,showValue:false};case"toggle":return{...c,value:0,style:"switch",showValue:false};case"combo":return{...c,options:"Option 1, Option 2, Option 3",value:1,showValue:false};case"label":return{...c,showLabel:false,showValue:false};case"text":return{...c,text:"Enter text...",showValue:false};case"meter":return{...c,min:0,max:100,step:1,value:80,peakVal:85,style:"vertical",showValue:true};case"waveform":return{...c,showLabel:false,showValue:false};case"group":return{...c,showValue:false};case"tabs":return{...c,options:"Tab 1, Tab 2, Tab 3",value:1,showValue:false};case"valuedisplay":return{...c,min:-60,max:12,step:0.1,value:0,def:0,style:"valuedisplay",showValue:true};default:return c}}
+function makeInputRow(l,t,p,v){return`<div class="prop-row"><span class="prop-label">${l}</span><input type="${t}" step="any" class="prop-input" data-prop="${p}" value="${v!==undefined?v:""}"></div>`}
+function makeSelectRow(l,p,opts,cur){const renderOpts=list=>list.map(o2=>{const v=(typeof o2==="object")?o2.value:o2;const n=(typeof o2==="object")?o2.name:o2;return`<option value="${v}" ${v==cur?"selected":""}>${n}</option>`}).join("");let o;if(Array.isArray(opts)&&opts.length&&opts[0]&&Array.isArray(opts[0].options)){o=opts.map(g=>`<optgroup label="${g.label}">${renderOpts(g.options)}</optgroup>`).join("")}else{o=renderOpts(opts)}return`<div class="prop-row"><span class="prop-label">${l}</span><select class="prop-input" data-prop="${p}">${o}</select></div>`}
+function makeCheckboxRow(l,p,chk){return`<div class="prop-row"><span class="prop-label">${l}</span><input type="checkbox" class="prop-input" data-prop="${p}" ${chk?"checked":""}></div>`}
+function loadDefaultLayout(){state.elements=DEFAULT_PROJECT.map(e=>JSON.parse(JSON.stringify(e)));state.selectedId=state.elements[0]?state.elements[0].id:null;recalcCanvasSize()}
+function recalcCanvasSize(){let mw=800,mh=520;state.elements.forEach(e2=>{mw=Math.max(mw,num(e2.x)+num(e2.w)+50);mh=Math.max(mh,num(e2.y)+num(e2.h)+50)});state.canvasWidth=mw;state.canvasHeight=mh}
+function snapValue(v,s){if(!s||s<=0)return v;return Math.round(v/s)*s}
+function updateLayoutState(){const g=document.getElementById("main-grid"),L=document.getElementById("sidebar-left"),R=document.getElementById("sidebar-right");L.classList.toggle("collapsed",!state.showLeftSidebar);R.classList.toggle("collapsed",!state.showRightSidebar);g.className=(!state.showLeftSidebar&&!state.showRightSidebar)?"main-container hide-both":!state.showLeftSidebar?"main-container hide-left":!state.showRightSidebar?"main-container hide-right":"main-container";applyZoom()}
+function applyZoom(){
+  const ct=document.getElementById("canvas-container"),cv=document.getElementById("canvas");
+  const s=parseFloat(state.zoom)||1;
+  cv.style.width=state.canvasWidth+"px";cv.style.height=state.canvasHeight+"px";
+  cv.style.transform=`scale(${s})`;
+  ct.style.width=Math.round(state.canvasWidth*s)+"px";ct.style.height=Math.round(state.canvasHeight*s)+"px";
+}
+function applyThemeCSS(){const c=state.theme.colors,r=document.documentElement.style;r.setProperty("--background",c.background);r.setProperty("--panel",c.panel);r.setProperty("--panel2",c.panel2);r.setProperty("--control",c.control);r.setProperty("--border",c.border);r.setProperty("--text",c.text);r.setProperty("--text-secondary",c.textSecondary);r.setProperty("--accent",c.accent)}
+function syncFrame(){
+  const acc=state.theme.colors.accent||"#ff6b2c";
+  document.querySelectorAll(".canvas-element").forEach(n=>{
+    const isSel=(n.dataset.id===state.selectedId);
+    n.classList.toggle("selected",isSel);
+    n.style.outline=(isSel&&state.showFrame)?("1px solid "+acc):"none";
+    n.querySelectorAll(".resize-handle").forEach(h=>{h.style.display=(isSel&&state.mode==="edit")?"block":"none"});
+  });
+}
+function refreshUI({list=false,canvas=false,inspector=false,code=false}={}){
+  if(list)renderElementList();
+  if(canvas)renderCanvas();
+  if(inspector)renderInspector();
+  if(code)updateCodeView();
+}
+function refreshProjectView(){refreshUI({list:true,canvas:true,inspector:true,code:true})}
+function setSelected(id){
+  state.selectedId=id;
+  const ic=document.getElementById("inspector-container");
+  const scrollTop=ic?ic.scrollTop:0;
+  syncFrame();
+  refreshUI({list:true,inspector:true,code:true});
+  if(ic){ic.scrollTop=scrollTop;requestAnimationFrame(()=>{ic.scrollTop=Math.min(scrollTop,Math.max(0,ic.scrollHeight-ic.clientHeight))})}
+}
+function renderElementList(){
+  const l=document.getElementById("element-list"),b=document.getElementById("el-count-badge");
+  if(!l||!b)return;b.textContent=state.elements.length;l.innerHTML="";
+  state.elements.forEach(e2=>{
+    const i=document.createElement("li");
+    i.className=`element-item ${e2.id===state.selectedId?"selected":""}`;
+    const s=document.createElement("span");
+    s.textContent=`${e2.id} (${e2.type})`;
+    const b2=document.createElement("span");
+    b2.style.fontSize="10px";b2.style.opacity="0.6";
+    b2.textContent=e2.paramId?`[${e2.paramId}]`:"";
+    i.appendChild(s);i.appendChild(b2);
+    i.addEventListener("click",()=>setSelected(e2.id));
+    l.appendChild(i);
+  });
+}
+function hasValueBlock(el){return ["knob","slider","meter","valuedisplay"].includes(el.type)}
+function hasLabelBlock(el){return true}
+function getAvailableLayoutBlocks(el){
+  const blocks=[];
+  if(el.type==="label"||(hasLabelBlock(el)&&el.showLabel!==false))blocks.push("label");
+  if(el.type!=="label"&&el.type!=="valuedisplay")blocks.push("control");
+  if(hasValueBlock(el)&&el.showValue===true)blocks.push("value");
+  return blocks;
+}
+function getAllLayoutBlocks(el){
+  const blocks=[];
+  if(el.type==="label"||hasLabelBlock(el))blocks.push("label");
+  if(el.type!=="label"&&el.type!=="valuedisplay")blocks.push("control");
+  if(hasValueBlock(el))blocks.push("value");
+  return blocks;
+}
+function normalizeLayoutPreset(el){
+  if(el.type==="label")return"vertical:label";
+  const available=getAvailableLayoutBlocks(el);
+  const all=getAllLayoutBlocks(el);
+  let raw=String(el.layoutPreset||"");
+  let parts=raw.split(":");
+  let direction=parts[0]==="horizontal"?"horizontal":"vertical";
+  let requested=parts.slice(1).join(":").split("-").filter(Boolean);
+  const order=[];
+  requested.forEach(b=>{if(all.includes(b)&&!order.includes(b))order.push(b)});
+  available.forEach(b=>{if(!order.includes(b))order.push(b)});
+  const filtered=order.filter(b=>available.includes(b));
+  if(!filtered.length)filtered.push("control");
+  return direction+":"+filtered.join("-");
+}
+function getLayoutOptions(el){
+  if(el.type==="label")return[];
+  const available=getAvailableLayoutBlocks(el);
+  const variants=permutations(available);
+  return [
+    {label:"Вертикально:",options:variants.map(order=>({value:"vertical:"+order.join("-"),name:order.map(blockLabel).join(" → ")}))},
+    {label:"Горизонтально:",options:variants.map(order=>({value:"horizontal:"+order.join("-"),name:order.map(blockLabel).join(" → ")}))}
+  ];
+}
+function permutations(arr){
+  if(arr.length<=1)return[arr.slice()];
+  const out=[];
+  arr.forEach((item,i)=>{const rest=arr.slice(0,i).concat(arr.slice(i+1));permutations(rest).forEach(p=>out.push([item,...p]))});
+  return out;
+}
+function blockLabel(type){return type==="label"?"Лейбл":type==="control"?"Контрол":"Значение"}
+function getLayoutAxisSize(el,type,mode){
+  const isLabel=type==="label",prefix=isLabel?"label":"value";
+  const widthMode=el[prefix+"WidthMode"]||"text";
+  const fixed=num(el[prefix+"FixedWidth"]||(isLabel?80:60));
+  if(mode==="vertical"){
+    const borderEnabled=el[prefix+"BorderEnabled"]!==false;
+    const border=num(el[prefix+"BorderWidth"]||0);
+    const pad=num(el[prefix+"PadV"]||0);
+    const font=num(el[prefix+"FontSize"]||(isLabel?12:12));
+    return Math.max(0,font+2*pad+(borderEnabled?2*border:0));
+  }
+  return widthMode==="fixed"?Math.max(0,fixed):null;
+}
+function getLayoutModel(el){
+  const preset=normalizeLayoutPreset(el);
+  const [mode,orderRaw]=preset.split(":");
+  const order=orderRaw.split("-").filter(Boolean);
+  const gaps={label:num(el.gapAfterLabel??2),control:num(el.gapAfterControl??2),value:num(el.gapAfterValue??2)};
+  const padding={top:num(el.paddingTop??2),right:num(el.paddingRight??2),bottom:num(el.paddingBottom??2),left:num(el.paddingLeft??2)};
+  const slots=order.map(type=>({type,marginAfter:gaps[type]||0}));
+  const labelHeight=Math.max(0,num(el.labelFontSize||12)+2*num(el.labelPadV||0)+((el.labelBorderEnabled!==false)?2*num(el.labelBorderWidth||0):0));
+  const valueHeight=Math.max(0,num(el.valueFontSize||12)+2*num(el.valuePadV||0)+((el.valueBorderEnabled!==false)?2*num(el.valueBorderWidth||0):0));
+  return {mode,preset,order,slots,padding,gaps,labelSize:getLayoutAxisSize(el,"label",mode),valueSize:getLayoutAxisSize(el,"value",mode),labelHeight,valueHeight};
+}
+function getSlotOrder(el){return getLayoutModel(el).slots}
+
+function updateModeActionState(){
+  const edit=state.mode==="edit";
+  ["btn-add","btn-duplicate","btn-delete","align-left","align-center-h","align-right","align-top","align-center-v","align-bottom"].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=!edit});
+}
+function setMode(mode){
+  if(mode===state.mode)return;
+  state.mode=mode;
+  updateModeActionState();
+  document.getElementById("mode-edit").classList.toggle("active",mode==="edit");
+  document.getElementById("mode-test").classList.toggle("active",mode==="test");
+  refreshUI({canvas:true,inspector:true,code:true});
+}
+function renderCanvas(){
+  recalcCanvasSize();applyZoom();
+  const cv=document.getElementById("canvas");cv.innerHTML="";
+  cv.style.backgroundColor=state.canvasColor||state.theme.colors.panel;
+  if(state.gridSnap>0&&state.mode!=="test"){cv.style.backgroundImage=`radial-gradient(circle,rgba(255,255,255,.08) 1px,transparent 1px)`;cv.style.backgroundSize=`${state.gridSnap*2}px ${state.gridSnap*2}px`}
+  else cv.style.backgroundImage="none";
+  state.elements.forEach(e2=>{
+    if(e2.visible===false)return;
+    const w=document.createElement("div");
+    w.dataset.id=e2.id;
+    w.className=`canvas-element ${state.mode}`;
+    w.style.left=e2.x+"px";w.style.top=e2.y+"px";w.style.width=e2.w+"px";w.style.height=e2.h+"px";
+    w.style.opacity=e2.enabled===false?"0.45":"1";
+    w.style.setProperty("--el-radius",(num(e2.cornerRadius)||6)+"px");
+    w.style.paddingTop=(num(e2.paddingTop||0))+"px";
+    w.style.paddingRight=(num(e2.paddingRight||0))+"px";
+    w.style.paddingBottom=(num(e2.paddingBottom||0))+"px";
+    w.style.paddingLeft=(num(e2.paddingLeft||0))+"px";
+    const layout=getLayoutModel(e2);
+    const mode=layout.mode;
+    w.style.flexDirection=mode==="horizontal"?"row":"column";
+    w.style.alignItems="stretch";
+    w.style.setProperty("--el-font-size",(num(e2.fontSize)||12)+"px");
+    w.style.setProperty("--el-label-font-size",(num(e2.labelFontSize)||12)+"px");
+    w.style.setProperty("--el-label-color",e2.labelColor||"#a6adba");
+    w.style.setProperty("--el-value-font-size",(num(e2.valueFontSize)||12)+"px");
+    w.style.setProperty("--el-value-color",e2.valueColor||"#edeff2");
+    w.style.setProperty("--accent",e2.accent||state.theme.colors.accent);
+    w.style.setProperty("--el-label-bg",(e2.labelBorderEnabled!==false)?(e2.labelBgColor||"transparent"):"transparent");
+    w.style.setProperty("--el-label-border-color",e2.labelBorderColor||"#141414");
+    w.style.setProperty("--el-label-border-radius",(e2.labelBorderEnabled!==false?(num(e2.labelBorderRadius)||4):0)+"px");
+    w.style.setProperty("--el-label-border-width",(e2.labelBorderEnabled!==false?(num(e2.labelBorderWidth)||1):0)+"px");
+    w.style.setProperty("--el-label-pad-v",Math.max(0,num(e2.labelPadV))+"px");
+    w.style.setProperty("--el-label-pad-h",Math.max(0,num(e2.labelPadH))+"px");
+    w.style.setProperty("--el-value-bg",(e2.valueBorderEnabled!==false)?(e2.valueBgColor||"transparent"):"transparent");
+    w.style.setProperty("--el-value-border-color",e2.valueBorderColor||"#141414");
+    w.style.setProperty("--el-value-border-radius",(e2.valueBorderEnabled!==false?(num(e2.valueBorderRadius)||4):0)+"px");
+    w.style.setProperty("--el-value-border-width",(e2.valueBorderEnabled!==false?(num(e2.valueBorderWidth)||1):0)+"px");
+    w.style.setProperty("--el-value-pad-v",Math.max(0,num(e2.valuePadV))+"px");
+    w.style.setProperty("--el-value-pad-h",Math.max(0,num(e2.valuePadH))+"px");
+    const slots=getSlotOrder(e2);
+    slots.forEach((slot,slotIndex)=>{
+      if(slot.type==="control"){
+        const ctrl=document.createElement("div");
+        ctrl.className="control";
+        ctrl.style.flex="1";
+        ctrl.style.minWidth="0";ctrl.style.minHeight="0";
+        renderElementControl(e2,ctrl);
+        if(slot.marginAfter)ctrl.style[mode==="vertical"?"marginBottom":"marginRight"]=slot.marginAfter+"px";
+        w.appendChild(ctrl);
+      }else if(slot.type==="label"){
+        const lbl=document.createElement("div");
+        lbl.className="element-label";
+        lbl.textContent=e2.label||e2.id;
+        lbl.style.fontFamily=cssFont(e2.labelFont);
+        lbl.style.fontWeight=e2.labelFontWeight||"500";
+        if(mode==="vertical"){
+          if(e2.labelWidthMode==="fixed")lbl.style.width=(num(e2.labelFixedWidth)||60)+"px";
+          else if(e2.labelWidthMode==="element")lbl.style.width="100%";
+          else lbl.style.width="auto";
+          lbl.style.height=layout.labelHeight+"px";
+          lbl.style.alignSelf=e2.labelWidthMode==="element"?"stretch":"center";
+        }else{
+          if(e2.labelWidthMode==="fixed")lbl.style.width=(num(e2.labelFixedWidth)||60)+"px";
+          else lbl.style.width="auto";
+          lbl.style.height=layout.labelHeight+"px";
+          lbl.style.alignSelf="center";
+        }
+        if(slot.marginAfter)lbl.style[mode==="vertical"?"marginBottom":"marginRight"]=slot.marginAfter+"px";
+        w.appendChild(lbl);
+      }else if(slot.type==="value"){
+        const val=document.createElement("div");
+        val.className="element-value";
+        val.textContent=formatVal(e2);
+        val.style.fontFamily=cssFont(e2.valueFont);
+        val.style.fontWeight=e2.valueFontWeight||"500";
+        if(mode==="vertical"){
+          if(e2.valueWidthMode==="fixed")val.style.width=(num(e2.valueFixedWidth)||60)+"px";
+          else if(e2.valueWidthMode==="element")val.style.width="100%";
+          else val.style.width="auto";
+          val.style.height=layout.valueHeight+"px";
+          val.style.alignSelf=e2.valueWidthMode==="element"?"stretch":"center";
+        }else{
+          if(e2.valueWidthMode==="fixed")val.style.width=(num(e2.valueFixedWidth)||60)+"px";
+          else val.style.width="auto";
+          val.style.height=layout.valueHeight+"px";
+          val.style.alignSelf="center";
+        }
+        if(state.mode==="test"){val.style.cursor="ns-resize";bindControlInteractions(val,e2,true)}
+        if(slot.marginAfter)val.style[mode==="vertical"?"marginBottom":"marginRight"]=slot.marginAfter+"px";
+        w.appendChild(val);
+      }
+    });
+    ["nw","ne","se","sw","n","s","w","e"].forEach(d=>{
+      const h=document.createElement("div");
+      h.className="resize-handle rh-"+d;
+      h.addEventListener("pointerdown",ev=>{if(ev.button!==0||state.mode!=="edit")return;ev.stopPropagation();startResizeCanvasElement(ev,e2,d)});
+      w.appendChild(h);
+    });
+    w.addEventListener("pointerdown",e=>{
+      if(e.button!==0)return;
+      setSelected(e2.id);
+      if(state.mode==="edit")startDragCanvasElement(e,e2);
+    });
+    cv.appendChild(w);
+  });
+  syncFrame();
+}
+function renderElementControl(el,container){
+  const accent=el.accent||state.theme.colors.accent;
+  switch(el.type){
+    case "knob":{
+      const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+      svg.setAttribute("viewBox","0 0 100 100");
+      svg.setAttribute("preserveAspectRatio","xMidYMid meet");
+      svg.style.width="100%";svg.style.height="100%";svg.style.display="block";
+      const cx=50,cy=50,rT=45,pol=(deg,r)=>{const rad=(deg-90)*Math.PI/180;return{x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)}};
+      const norm=Math.max(0,Math.min(1,(el.value-el.min)/((el.max-el.min)||1)));
+      const sa=225,tot=270,cur=sa+norm*tot;
+      const p1=pol(sa,rT),p2=pol(sa+tot,rT);
+      const trackD=`M ${p1.x} ${p1.y} A ${rT} ${rT} 0 1 1 ${p2.x} ${p2.y}`;
+      let valD="";if(norm>0.001){const pc=pol(cur,rT);const la=(norm*tot)>180?1:0;valD=`<path d="M ${p1.x} ${p1.y} A ${rT} ${rT} 0 ${la} 1 ${pc.x} ${pc.y}" fill="none" stroke="${accent}" stroke-width="9" stroke-linecap="round"/>`}
+      const ps=pol(cur,14),pe=pol(cur,29);
+      svg.innerHTML=`<path d="${trackD}" fill="none" stroke="var(--border)" stroke-width="9" stroke-linecap="round"/>${valD}<circle cx="50" cy="50" r="32" fill="var(--control)" stroke="var(--border)" stroke-width="2"/><line x1="${ps.x}" y1="${ps.y}" x2="${pe.x}" y2="${pe.y}" stroke="var(--text)" stroke-width="4" stroke-linecap="round"/>`;
+      if(state.mode==="test"&&el.enabled!==false)bindControlInteractions(svg,el);
+      container.appendChild(svg);break}
+    case "slider":{
+      const hz=el.style==="horizontal";const norm=Math.max(0,Math.min(1,(el.value-el.min)/((el.max-el.min)||1)));
+      const track=document.createElement("div");
+      track.style.cssText=`position:relative;background:var(--control);border:1px solid var(--border);border-radius:6px;overflow:visible;${hz?"width:100%;height:12px":"width:12px;height:100%"}`;
+      const fill=document.createElement("div");fill.style.backgroundColor=accent;fill.style.position="absolute";fill.style.borderRadius="6px";
+      if(hz){fill.style.left="0";fill.style.top="0";fill.style.bottom="0";fill.style.width=`calc(${norm} * (100% - 16px) + 8px)`}
+      else{fill.style.left="0";fill.style.right="0";fill.style.bottom="0";fill.style.height=`calc(${norm} * (100% - 16px) + 8px)`}
+      const thumb=document.createElement("div");
+      thumb.style.cssText=`position:absolute;width:16px;height:16px;border-radius:50%;background:var(--text);border:2px solid ${accent};box-sizing:border-box;${hz?`left:calc(${norm} * (100% - 16px));top:50%;transform:translateY(-50%)`:`left:50%;bottom:calc(${norm} * (100% - 16px));transform:translateX(-50%)`}`;
+      track.appendChild(fill);track.appendChild(thumb);
+      if(state.mode==="test"&&el.enabled!==false)bindControlInteractions(track,el);
+      container.appendChild(track);break}
+    case "button":{
+      const b=document.createElement("button");b.style.cssText=`width:100%;height:100%;border-radius:${el.cornerRadius}px;font-weight:600;font-size:${el.fontSize||12}px`;b.textContent=el.label||"BUTTON";
+      if(el.value){b.style.backgroundColor=accent;b.style.color="#141518"}
+      if(state.mode==="test"&&el.enabled!==false){b.addEventListener("pointerdown",()=>{if(el.style==="toggle"){el.value=el.value?0:1}else{el.value=1;const up=()=>{el.value=0;window.removeEventListener("pointerup",up);renderCanvas();updateInspectorAndCode()};window.addEventListener("pointerup",up)}renderCanvas();updateInspectorAndCode()})}
+      container.appendChild(b);break}
+    case "toggle":{
+      const track=document.createElement("div");track.style.cssText=`width:42px;height:22px;border-radius:999px;background:${el.value?accent:"var(--control)"};border:1px solid var(--border);position:relative;cursor:pointer;transition:background .15s`;
+      const th=document.createElement("div");th.style.cssText=`width:16px;height:16px;border-radius:50%;background:${el.value?"#141518":"var(--text)"};position:absolute;top:2px;left:${el.value?"22px":"2px"};transition:left .15s`;
+      track.appendChild(th);if(state.mode==="test"&&el.enabled!==false)track.addEventListener("pointerdown",e=>{setSelected(el.id);e.stopPropagation();el.value=el.value?0:1;renderCanvas();updateInspectorAndCode()});container.appendChild(track);break}
+    case "combo":{
+      const optsArr=(el.options||"").split(",").map(s2=>s2.trim()).filter(Boolean);
+      const selTxt=optsArr[num(el.value)-1]||(optsArr[0]||"");
+      const b=document.createElement("button");
+      b.style.cssText=`width:100%;height:100%;font-size:${el.fontSize||12}px;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px;text-align:left;`;
+      b.textContent=selTxt;
+      const arrow=document.createElement("span");arrow.textContent="▾";arrow.style.opacity="0.7";
+      b.appendChild(arrow);
+      if(state.mode==="test"&&el.enabled!==false)b.addEventListener("pointerdown",e=>{setSelected(el.id);e.stopPropagation();openComboMenu(el,b)});
+      container.appendChild(b);break}
+    case "label":{const d=document.createElement("div");d.style.cssText=`font-weight:600;font-size:${el.fontSize||12}px;color:var(--text)`;d.textContent=el.label||"Text Label";container.appendChild(d);break}
+    case "text":{const i=document.createElement("input");i.type="text";i.value=el.text||"";i.style.cssText=`width:100%;height:100%;font-size:${el.fontSize||12}px`;if(state.mode==="test"&&el.enabled!==false){i.addEventListener("focus",()=>setSelected(el.id));i.addEventListener("input",e=>{el.text=e.target.value;updateInspectorAndCode()})}container.appendChild(i);break}
+    case "meter":{
+      const hz=el.style==="horizontal";const norm=Math.max(0,Math.min(1,(el.value-el.min)/((el.max-el.min)||1)));
+      const track=document.createElement("div");track.style.cssText=`background:var(--control);border:1px solid var(--border);border-radius:6px;position:relative;overflow:hidden;${hz?"height:14px;width:100%":"width:14px;height:100%"}`;
+      const fill=document.createElement("div");fill.style.backgroundColor=accent;fill.style.position="absolute";
+      if(hz){fill.style.left="0";fill.style.top="0";fill.style.bottom="0";fill.style.width=(norm*100)+"%"}
+      else{fill.style.left="0";fill.style.right="0";fill.style.bottom="0";fill.style.height=(norm*100)+"%"}
+      const peak=document.createElement("div");peak.style.backgroundColor="var(--text)";peak.style.position="absolute";
+      const pN=Math.min(1,Math.max(0,(((el.peakVal??el.value)-el.min)/((el.max-el.min)||1))));
+      if(hz){peak.style.width="2px";peak.style.top="0";peak.style.bottom="0";peak.style.left=(pN*100)+"%"}
+      else{peak.style.height="2px";peak.style.left="0";peak.style.right="0";peak.style.bottom=(pN*100)+"%"}
+      track.appendChild(fill);track.appendChild(peak);container.appendChild(track);break}
+    case "waveform":{
+      const cvs=document.createElement("canvas");cvs.width=Math.max(20,el.w-12);cvs.height=Math.max(20,el.h-12);cvs.style.cssText=`width:100%;height:100%;background:var(--panel2);border-radius:6px;border:1px solid var(--border)`;
+      const ctx=cvs.getContext("2d");ctx.strokeStyle=accent;ctx.lineWidth=2;ctx.beginPath();const mid=cvs.height/2;ctx.moveTo(0,mid);
+      for(let x=0;x<cvs.width;x+=4){const hh=Math.sin(x*0.05+el.id.length)*(mid*0.7);ctx.lineTo(x,mid+hh)}ctx.stroke();container.appendChild(cvs);break}
+    case "group":{const b=document.createElement("div");b.style.cssText=`width:100%;height:100%;border:1px dashed var(--border);border-radius:${el.cornerRadius}px;background:rgba(255,255,255,.02)`;container.appendChild(b);break}
+    case "tabs":{
+      const g=num(el.tabGap??4);
+      const row=document.createElement("div");row.style.cssText=`display:flex;width:100%;height:100%;gap:${g}px`;
+      (el.options||"").split(",").map(s2=>s2.trim()).forEach((opt,i)=>{const tb=document.createElement("button");tb.style.flex="1";tb.style.height="100%";tb.style.fontSize=(el.fontSize||12)+"px";tb.textContent=opt;if(i+1===el.value){tb.style.backgroundColor=accent;tb.style.color="#141518"}if(state.mode==="test"&&el.enabled!==false)tb.addEventListener("pointerdown",e=>{setSelected(el.id);e.stopPropagation();el.value=i+1;renderCanvas();updateInspectorAndCode()});row.appendChild(tb)});container.appendChild(row);break}
+    case "valuedisplay":{
+      const placeholder=document.createElement("div");
+      placeholder.style.cssText="flex:1;min-height:1px;width:100%";
+      if(state.mode==="test"&&el.enabled!==false){placeholder.style.cursor="ns-resize";bindControlInteractions(placeholder,el,true)}
+      container.appendChild(placeholder);break}
+  }
+}
+function bindControlInteractions(target,el,isValueBlock){
+  if(el.enabled===false)return;
+  const isHorizontal=!isValueBlock&&el.type==="slider"&&el.style==="horizontal";
+  let sPos=0,sV=el.value;
+  const onMove=e=>{const delta=isHorizontal?(e.clientX-sPos):(sPos-e.clientY);const sens=(el.dragSensitivity||1)*((el.max-el.min)/200);let nv=sV+delta*sens;el.value=clampValue(el,nv);renderCanvas();syncInspectorElementFields(el);updateCodeView()};
+  const onUp=()=>{window.removeEventListener("pointermove",onMove);window.removeEventListener("pointerup",onUp)};
+  target.addEventListener("pointerdown",e=>{if(state.mode!=="test"||el.enabled===false)return;setSelected(el.id);e.stopPropagation();sPos=isHorizontal?e.clientX:e.clientY;sV=el.value;window.addEventListener("pointermove",onMove);window.addEventListener("pointerup",onUp)});
+  target.addEventListener("dblclick",e=>{if(state.mode!=="test")return;setSelected(el.id);e.stopPropagation();el.value=clampValue(el,num(el.def));renderCanvas();syncInspectorElementFields(el);updateCodeView()});
+}
+function startDragCanvasElement(e,el){if(state.mode!=="edit")return;const sX=e.clientX,sY=e.clientY,ix=el.x,iy=el.y;let sc=currentScale();const onMove=ev=>{let nx=ix+(ev.clientX-sX)/sc,ny=iy+(ev.clientY-sY)/sc;if(state.gridSnap>0){nx=snapValue(nx,state.gridSnap);ny=snapValue(ny,state.gridSnap)}el.x=Math.max(0,nx);el.y=Math.max(0,ny);renderCanvas();syncInspectorElementFields(el);updateCodeView()};const onUp=()=>{window.removeEventListener("pointermove",onMove);window.removeEventListener("pointerup",onUp)};window.addEventListener("pointermove",onMove);window.addEventListener("pointerup",onUp)}
+function currentScale(){return parseFloat(state.zoom)||1}
+function startResizeCanvasElement(e,el,dir){if(state.mode!=="edit")return;const sX=e.clientX,sY=e.clientY,ix=el.x,iy=el.y,iw=el.w,ih=el.h;let sc=currentScale();const onMove=ev=>{const dx=(ev.clientX-sX)/sc,dy=(ev.clientY-sY)/sc;let nw=iw,nh=ih,nx=ix,ny=iy;if(dir.includes("e"))nw=Math.max(20,iw+dx);if(dir.includes("s"))nh=Math.max(20,ih+dy);if(dir.includes("w")){nw=Math.max(20,iw-dx);nx=ix+(iw-nw)}if(dir.includes("n")){nh=Math.max(20,ih-dy);ny=iy+(ih-nh)}if(state.gridSnap>0){nx=snapValue(nx,state.gridSnap);ny=snapValue(ny,state.gridSnap);nw=snapValue(nw,state.gridSnap);nh=snapValue(nh,state.gridSnap)}el.x=nx;el.y=ny;el.w=nw;el.h=nh;renderCanvas();syncInspectorElementFields(el);updateCodeView()};const onUp=()=>{window.removeEventListener("pointermove",onMove);window.removeEventListener("pointerup",onUp)};window.addEventListener("pointermove",onMove);window.addEventListener("pointerup",onUp)}
+function syncInspectorElementFields(el){
+  const c=document.getElementById("inspector-container");
+  if(!c||!el)return;
+  ["x","y","w","h","value"].forEach(prop=>{
+    const inp=c.querySelector(`input[data-prop="${prop}"]`);
+    if(inp&&document.activeElement!==inp)inp.value=el[prop]??"";
+  });
+  const taText=c.querySelector(`textarea[data-prop="text"]`);
+  if(taText&&document.activeElement!==taText){taText.value=el.text??"";autoResizeTextarea(taText)}
+}
+function updateInspectorAndCode(){
+  const el=state.elements.find(i=>i.id===state.selectedId);
+  if(el)syncInspectorElementFields(el);
+  updateCodeView();
+}
+function autoResizeTextarea(ta){
+  if(!ta||ta.tagName!=="TEXTAREA")return;
+  ta.style.height="auto";
+  ta.style.height=ta.scrollHeight+"px";
+}
+function bindInspectorEvents(el){
+  const c=document.getElementById("inspector-container");if(!c)return;
+  c.querySelectorAll("input, select").forEach(inp=>{const prop=inp.dataset.prop;if(!prop)return;const upd=()=>{
+      let v=inp.type==="checkbox"?inp.checked:inp.value;if(inp.type==="number")v=parseFloat(v)||0;
+      if(prop==="id"){
+        const newId=String(v).trim();
+        if(newId===el.id)return;
+        if(!isValidId(newId)||idExists(newId,el.id)){inp.value=el.id;status("ID должен быть уникальным и содержать только A-Z, a-z, 0-9 и _");return;}
+        const oldId=el.id;el.id=newId;if(state.selectedId===oldId)state.selectedId=newId;
+      }else{el[prop]=v;}
+      renderCanvas();renderElementList();updateCodeView();
+    };
+    inp.addEventListener("input",upd);
+    inp.addEventListener("change",()=>{upd();if(inp.tagName==="SELECT"||inp.type==="checkbox")renderInspector()})});
+  c.querySelectorAll("input[type=\"checkbox\"].prop-input").forEach(cb=>{cb.addEventListener("pointerdown",e=>{e.preventDefault();cb.checked=!cb.checked;cb.dispatchEvent(new Event("change",{bubbles:true}))})});
+  c.querySelectorAll("textarea.prop-input").forEach(ta=>{const prop=ta.dataset.prop;if(!prop)return;const updTa=()=>{el[prop]=ta.value;renderCanvas();renderElementList();updateCodeView()};ta.addEventListener("input",()=>{autoResizeTextarea(ta);updTa()});ta.addEventListener("change",()=>{updTa()})});
+  const bS=document.getElementById("p-save");if(bS)bS.onclick=async()=>{if(!state.dirHandle){status("Подключи папку");return}const name=prompt("Название пресета:",`${el.type} Preset`);if(!name)return;const st=getPresetsStore();if(!st[el.type])st[el.type]={presets:{}};st[el.type].presets[name]=makePresetData(el);await savePresetsStore(st);renderInspector();status(`Пресет "${name}" сохранён`)};
+  const bD=document.getElementById("p-def");if(bD)bD.onclick=async()=>{if(!state.dirHandle){status("Подключи папку");return}const st=getPresetsStore();if(!st[el.type])st[el.type]={presets:{}};st[el.type].default=makePresetData(el);await savePresetsStore(st);status(`Дефолт для ${el.type} обновлён`)};
+  const bA=document.getElementById("p-apply-def");if(bA)bA.onclick=()=>{const d=getDefaultElementProps(el.type);const k={id:el.id,x:el.x,y:el.y};Object.assign(el,d,k);refreshUI({canvas:true,inspector:true,code:true});status(`Сброшено к умолчанию`)};
+  const pS=document.getElementById("p-select");if(pS)pS.onchange=e=>{const k2=e.target.value;if(!k2)return;const st=getPresetsStore();if(st[el.type]&&st[el.type].presets&&st[el.type].presets[k2]){const k3={id:el.id,x:el.x,y:el.y};Object.assign(el,JSON.parse(JSON.stringify(st[el.type].presets[k2])),k3);refreshUI({canvas:true,inspector:true,code:true});status(`Применён пресет "${k2}"`)}};
+  const bDel=document.getElementById("p-delete");if(bDel)bDel.onclick=async()=>{if(!state.dirHandle){status("Подключи папку");return}const s=document.getElementById("p-select");if(!s||!s.value)return;const st=getPresetsStore();if(st[el.type]&&st[el.type].presets){delete st[el.type].presets[s.value];await savePresetsStore(st);renderInspector();status(`Пресет "${s.value}" удалён`)}}
+}
+function renderInspector(){
+  const c=document.getElementById("inspector-container");
+  if(!c)return;
+  const savedScrollTop=c.scrollTop;
+  c.innerHTML="";
+  if(state.rightTab==="theme"){
+    renderThemeAndCanvasInspector(c);
+    c.scrollTop=Math.min(savedScrollTop,Math.max(0,c.scrollHeight-c.clientHeight));
+    requestAnimationFrame(()=>{c.scrollTop=Math.min(savedScrollTop,Math.max(0,c.scrollHeight-c.clientHeight))});
+    return;
+  }
+  const el=state.elements.find(i=>i.id===state.selectedId);
+  if(!el){c.innerHTML=`<div style="color:var(--text-secondary);padding:8px;text-align:center;font-size:12px">Выберите элемент</div>`;return}
+  const st=getPresetsStore(),tp=st[el.type]||{presets:{}},keys=Object.keys(tp.presets||{});
+  let html=`<div class="inspector-section"><div class="inspector-title">Пресеты</div>
+<div style="display:flex;gap:4px">
+<button id="p-save" style="flex:1">💾 Сохранить</button>
+<button id="p-def" style="flex:1">⭐ Дефолт</button>
+<button id="p-apply-def" style="flex:1">↩️ Сброс</button>
+</div>
+${keys.length?`<div class="prop-row"><span class="prop-label">Пресет</span><select id="p-select" style="flex:1"><option value="">— Пресеты —</option>${keys.map(k=>`<option value="${k}">${k}</option>`).join("")}</select><button id="p-delete">🗑️</button></div>`:`<div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Нет пресетов для ${el.type}</div>`}
+</div>`;
+  html+=`<div class="inspector-section"><div class="inspector-title">Основные</div>
+${makeInputRow("ID","text","id",el.id)}
+${makeInputRow("Param ID","text","paramId",el.paramId||"")}
+${makeInputRow("Подпись","text","label",el.label)}
+${el.type==="text"?`<div class="prop-row"><span class="prop-label">Текст</span><textarea class="prop-input" data-prop="text" rows="1">${(el.text||"").replace(/</g,"&lt;")}</textarea></div>`:''}
+${makeInputRow("X","number","x",el.x)}
+${makeInputRow("Y","number","y",el.y)}
+${makeInputRow("Ширина","number","w",el.w)}
+${makeInputRow("Высота","number","h",el.h)}
+</div>`;
+  if(el.type==="label"){
+    html+=`<div class="inspector-section"><div class="inspector-title">Отступы</div>
+${makeInputRow("Сверху","number","paddingTop",num(el.paddingTop??2))}
+${makeInputRow("Снизу","number","paddingBottom",num(el.paddingBottom??2))}
+${makeInputRow("Слева","number","paddingLeft",num(el.paddingLeft??2))}
+${makeInputRow("Справа","number","paddingRight",num(el.paddingRight??2))}
+</div>`;
+  }else{
+    html+=`<div class="inspector-section"><div class="inspector-title">Расположение и отступы</div>
+<div class="inspector-subtitle">Расположение</div>
+${makeSelectRow("Вариант","layoutPreset",getLayoutOptions(el),normalizeLayoutPreset(el))}
+${hasLabelBlock(el)?makeCheckboxRow("Показывать Лейбл","showLabel",el.showLabel!==false):""}
+${hasValueBlock(el)?makeCheckboxRow("Показывать Значение","showValue",el.showValue===true):""}
+${el.type==="slider"?makeSelectRow("Ориентация","style",[{value:"vertical",name:"Вертикальный"},{value:"horizontal",name:"Горизонтальный"}],el.style||"vertical"):""}
+${el.type==="button"?makeSelectRow("Тип","style",[{value:"momentary",name:"Momentary"},{value:"toggle",name:"Toggle"}],el.style||"momentary"):""}
+${el.type==="meter"?makeSelectRow("Ориентация","style",[{value:"vertical",name:"Вертикальный"},{value:"horizontal",name:"Горизонтальный"}],el.style||"vertical"):""}
+<div class="inspector-subtitle">Отступы от границ</div>
+${makeInputRow("Сверху","number","paddingTop",num(el.paddingTop??2))}
+${makeInputRow("Снизу","number","paddingBottom",num(el.paddingBottom??2))}
+${makeInputRow("Слева","number","paddingLeft",num(el.paddingLeft??2))}
+${makeInputRow("Справа","number","paddingRight",num(el.paddingRight??2))}
+<div class="inspector-subtitle">Зазоры между блоками</div>
+${hasLabelBlock(el)?makeInputRow("После Лейбла","number","gapAfterLabel",num(el.gapAfterLabel??2)):""}
+${el.type!=="valuedisplay"?makeInputRow("После Контрола","number","gapAfterControl",num(el.gapAfterControl??2)):""}
+${hasValueBlock(el)?makeInputRow("После Значения","number","gapAfterValue",num(el.gapAfterValue??2)):""}
+${el.type==="tabs"?`<div class="prop-row"><span class="prop-label">Пункты</span><textarea class="prop-input" data-prop="options" rows="1">${(el.options||"").replace(/</g,"&lt;")}</textarea></div>`:""}
+${el.type==="tabs"?makeInputRow("Зазор между пунктов","number","tabGap",num(el.tabGap??4)):""}
+${el.type==="combo"?`<div class="prop-row"><span class="prop-label">Пункты</span><textarea class="prop-input" data-prop="options" rows="1">${(el.options||"").replace(/</g,"&lt;")}</textarea></div>`:""}
+</div>`;
+  }
+  if(["knob","slider","meter","valuedisplay"].includes(el.type))html+=`<div class="inspector-section"><div class="inspector-title">Значения</div>
+${makeInputRow("Min","number","min",el.min)}
+${makeInputRow("Max","number","max",el.max)}
+${makeInputRow("Step","number","step",el.step)}
+${makeInputRow("Value","number","value",el.value)}
+${el.type!=="meter"?makeInputRow("Default","number","def",el.def):""}
+${el.type!=="meter"?makeInputRow("Чувств. мыши","number","dragSensitivity",el.dragSensitivity):""}
+</div>`;
+  if(["combo","tabs"].includes(el.type))html+=`<div class="inspector-section"><div class="inspector-title">Выбор</div>
+${makeInputRow("Пункт","number","value",el.value)}
+</div>`;
+  if(el.type==="combo")html+=`<div class="inspector-section"><div class="inspector-title">Меню</div>
+${makeInputRow("Цвет меню","color","menuColor",el.menuColor||"#1d1f24")}
+${makeInputRow("Цвет бордера","color","menuBorderColor",el.menuBorderColor||"#32363f")}
+${makeInputRow("Радиус","number","menuCornerRadius",el.menuCornerRadius)}
+${makeInputRow("Толщина бордера","number","menuBorderWidth",el.menuBorderWidth)}
+${makeInputRow("Цвет подсветки","color","menuHoverColor",el.menuHoverColor||"#2a2e36")}
+</div>`;
+  if(el.type==="label"){
+    html+=`<div class="inspector-section"><div class="inspector-title">Внешний вид</div>
+${makeInputRow("Шрифт лейбла","number","labelFontSize",el.labelFontSize)}
+${makeSelectRow("Семейство","labelFont",FONTS,el.labelFont||"system")}
+${makeSelectRow("Начертание","labelFontWeight",FONT_WEIGHTS,el.labelFontWeight||"500")}
+${makeInputRow("Цвет лейбла","color","labelColor",el.labelColor)}
+</div>`;
+  }else{
+    html+=`<div class="inspector-section"><div class="inspector-title">Внешний вид</div>
+${makeInputRow("Акцент","color","accent",el.accent||state.theme.colors.accent)}
+${makeInputRow("Радиус","number","cornerRadius",el.cornerRadius)}
+${makeInputRow("Шрифт контрола","number","fontSize",el.fontSize)}
+${makeInputRow("Шрифт лейбла","number","labelFontSize",el.labelFontSize)}
+${makeSelectRow("Семейство","labelFont",FONTS,el.labelFont||"system")}
+${makeSelectRow("Начертание","labelFontWeight",FONT_WEIGHTS,el.labelFontWeight||"500")}
+${makeInputRow("Цвет лейбла","color","labelColor",el.labelColor)}
+${["knob","slider","meter","valuedisplay"].includes(el.type)?makeInputRow("Шрифт значения","number","valueFontSize",el.valueFontSize):""}
+${["knob","slider","meter","valuedisplay"].includes(el.type)?makeSelectRow("Семейство","valueFont",FONTS,el.valueFont||"system"):""}
+${["knob","slider","meter","valuedisplay"].includes(el.type)?makeSelectRow("Начертание","valueFontWeight",FONT_WEIGHTS,el.valueFontWeight||"500"):""}
+${["knob","slider","meter","valuedisplay"].includes(el.type)?makeInputRow("Цвет значения","color","valueColor",el.valueColor):""}
+</div>`;
+  }
+  html+=`<div class="inspector-section"><div class="inspector-title" style="display:flex;justify-content:space-between;align-items:center">Бордер лейбла<input type="checkbox" data-prop="labelBorderEnabled" ${el.labelBorderEnabled!==false?"checked":""} style="width:16px;height:16px;cursor:pointer"></div>
+${el.labelBorderEnabled!==false?`
+${makeInputRow("Цвет бордера","color","labelBorderColor",el.labelBorderColor)}
+${makeInputRow("Цвет фона","color","labelBgColor",el.labelBgColor)}
+${makeInputRow("Радиус","number","labelBorderRadius",el.labelBorderRadius)}
+${makeInputRow("Толщина","number","labelBorderWidth",el.labelBorderWidth)}
+${`<div class="prop-row"><span class="prop-label">Отступ В</span><input type="number" step="any" min="0" class="prop-input" data-prop="labelPadV" value="${Math.max(0,num(el.labelPadV))}"></div>`}
+${(el.labelWidthMode||"text")==="text"?`<div class="prop-row"><span class="prop-label">Отступ Г</span><input type="number" step="any" min="0" class="prop-input" data-prop="labelPadH" value="${Math.max(0,num(el.labelPadH))}"></div>`:""}
+${makeSelectRow("Ширина","labelWidthMode",[{value:"text",name:"По тексту"},{value:"element",name:"По элементу"},{value:"fixed",name:"Фикс."}],el.labelWidthMode)}
+${el.labelWidthMode==="fixed"?makeInputRow("Ширина px","number","labelFixedWidth",el.labelFixedWidth):""}
+`:''}
+</div>`;
+  if(["knob","slider","meter","valuedisplay"].includes(el.type)){
+    html+=`<div class="inspector-section"><div class="inspector-title" style="display:flex;justify-content:space-between;align-items:center">Бордер значения<input type="checkbox" data-prop="valueBorderEnabled" ${el.valueBorderEnabled!==false?"checked":""} style="width:16px;height:16px;cursor:pointer"></div>
+${el.valueBorderEnabled!==false?`
+${makeInputRow("Цвет бордера","color","valueBorderColor",el.valueBorderColor)}
+${makeInputRow("Цвет фона","color","valueBgColor",el.valueBgColor)}
+${makeInputRow("Радиус","number","valueBorderRadius",el.valueBorderRadius)}
+${makeInputRow("Толщина","number","valueBorderWidth",el.valueBorderWidth)}
+${`<div class="prop-row"><span class="prop-label">Отступ В</span><input type="number" step="any" min="0" class="prop-input" data-prop="valuePadV" value="${Math.max(0,num(el.valuePadV))}"></div>`}
+${makeSelectRow("Ширина","valueWidthMode",[{value:"element",name:"По элементу"},{value:"fixed",name:"Фикс."}],el.valueWidthMode)}
+${el.valueWidthMode==="fixed"?makeInputRow("Ширина px","number","valueFixedWidth",el.valueFixedWidth):""}
+`:''}
+</div>`;
+  }
+  html+=`<div class="inspector-section"><div class="inspector-title">Состояние</div>
+${makeCheckboxRow("Видимый","visible",el.visible!==false)}
+${makeCheckboxRow("Активен","enabled",el.enabled!==false)}
+</div>`;
+  c.innerHTML=html;
+  bindInspectorEvents(el);
+  c.scrollTop=Math.min(savedScrollTop,Math.max(0,c.scrollHeight-c.clientHeight));
+  requestAnimationFrame(()=>{c.scrollTop=Math.min(savedScrollTop,Math.max(0,c.scrollHeight-c.clientHeight))});
+}
+function renderThemeAndCanvasInspector(c){
+  let html=`<div class="inspector-section"><div class="inspector-title">Размер плагина</div>
+<div class="prop-row"><span class="prop-label">Ширина × Высота</span><span style="flex:1.2;text-align:right">${state.canvasWidth} × ${state.canvasHeight} px</span></div>
+</div>
+<div class="inspector-section"><div class="inspector-title">Тема</div>
+<div class="prop-row"><span class="prop-label">Пресет</span><select id="theme-preset-select" style="flex:1">${Object.keys(THEMES).map(t=>`<option value="${t}" ${t===state.theme.name?"selected":""}>${t}</option>`).join("")}</select></div>
+</div>
+<div class="inspector-section"><div class="inspector-title">Цвета</div>`;
+  Object.keys(state.theme.colors).forEach(k=>{
+    html+=`<div class="prop-row"><span class="prop-label">${k}</span><input type="color" class="theme-color-input" data-color="${k}" value="${state.theme.colors[k]}"></div>`;
+  });
+  html+=`</div>`;c.innerHTML=html;
+  c.querySelector("#theme-preset-select").onchange=e=>{const n=e.target.value;state.theme.name=n;state.theme.colors={...THEMES[n]};applyThemeCSS();renderThemeAndCanvasInspector(c);renderCanvas();updateCodeView();status("Тема применена")};
+  c.querySelectorAll(".theme-color-input").forEach(inp=>{inp.oninput=e=>{state.theme.colors[e.target.dataset.color]=e.target.value;applyThemeCSS();renderCanvas();updateCodeView()}})
+}
+function genLayoutBlock(el){
+  const layout=getLayoutModel(el);
+  const mode=layout.mode;
+  const pt=layout.padding.top,pr=layout.padding.right,pb=layout.padding.bottom,pl=layout.padding.left;
+  const lbEn=el.labelBorderEnabled!==false,vbEn=el.valueBorderEnabled!==false;
+  const labelH=layout.labelSize||0,valueH=layout.valueSize||0;
+  const labelHt=layout.labelHeight||0,valueHt=layout.valueHeight||0;
+  const labelW=num(el.labelFixedWidth||80),valueW=num(el.valueFixedWidth||60);
+  const labelFontExpr=cppFontField(el.labelFont,el.labelFontWeight,el.labelFontSize);
+  const safeLabelPadH=Math.max(0,num(el.labelPadH));
+  const labelAuto='juce::jmax (0.0f, juce::TextLayout::getStringWidth ('+labelFontExpr+', "'+escapeCpp(el.label)+'") + '+f1(2*safeLabelPadH+(lbEn?2*num(el.labelBorderWidth):0))+')';
+  const safeValuePadH=Math.max(0,num(el.valuePadH));
+  const valueFontExpr=cppFontField(el.valueFont,el.valueFontWeight,el.valueFontSize);
+  const valueAuto='juce::jmax (0.0f, juce::TextLayout::getStringWidth ('+valueFontExpr+', getValueText()) + '+f1(2*safeValuePadH+(vbEn?2*num(el.valueBorderWidth):0))+')';
+  const slotSize = slot => {
+    if(slot.type==="label"){
+      if(mode==="vertical")return f1(labelH);
+      if((el.labelWidthMode||"text")==="fixed")return f1(labelW);
+      if((el.labelWidthMode||"text")==="element")return "b.getWidth()";
+      return labelAuto;
+    }
+    if(slot.type==="value"){
+      if(mode==="vertical")return f1(valueH);
+      if((el.valueWidthMode||"element")==="fixed")return f1(valueW);
+      if((el.valueWidthMode||"element")==="element")return "b.getWidth()";
+      return valueAuto;
+    }
+    return null;
+  };
+  let s="        auto b = getLocalBounds().toFloat();\n";
+  s+="        b.removeFromTop ("+f1(pt)+");\n";
+  s+="        b.removeFromBottom ("+f1(pb)+");\n";
+  s+="        b.removeFromLeft ("+f1(pl)+");\n";
+  s+="        b.removeFromRight ("+f1(pr)+");\n";
+  s+="        auto labelR = juce::Rectangle<float>();\n        auto valueR = juce::Rectangle<float>();\n        auto mainR = juce::Rectangle<float>();\n";
+  layout.slots.forEach((slot,index)=>{
+    const gap=slot.marginAfter||0;
+    const remainingAfter=layout.slots.slice(index+1).reduce((sum,next)=>{
+      const n=slotSize(next);
+      const numeric=n&&/^[0-9.]+f$/.test(n)?parseFloat(n):0;
+      return sum+numeric+(next.marginAfter||0);
+    },0)+(gap||0);
+    if(slot.type==="control"){
+      const varName=mode==="vertical"?"b.getHeight()":"b.getWidth()";
+      const extentExpr="juce::jmax (0.0f, "+varName+" - "+f1(remainingAfter)+")";
+      s+=mode==="vertical"?"        mainR = b.removeFromTop ("+extentExpr+");\n":"        mainR = b.removeFromLeft ("+extentExpr+");\n";
+    }else if(slot.type==="label"){
+      const extent=slotSize(slot);
+      s+=mode==="vertical"?"        labelR = b.removeFromTop ("+extent+");\n":"        labelR = b.removeFromLeft ("+extent+");\n";
+      if(mode==="vertical"){
+        if(el.labelWidthMode==="fixed")s+="        labelR = labelR.withSizeKeepingCentre ("+f1(labelW)+", labelR.getHeight());\n";
+        else if(el.labelWidthMode!=="element")s+="        labelR = labelR.withSizeKeepingCentre ("+labelAuto+", labelR.getHeight());\n";
+        }else{
+        s+="        labelR = labelR.withSizeKeepingCentre (labelR.getWidth(), "+f1(labelHt)+");\n";
+        }
+      if(gap>0)s+=mode==="vertical"?"        b.removeFromTop ("+f1(gap)+");\n":"        b.removeFromLeft ("+f1(gap)+");\n";
+    }else if(slot.type==="value"){
+      const extent=slotSize(slot);
+      s+=mode==="vertical"?"        valueR = b.removeFromTop ("+extent+");\n":"        valueR = b.removeFromLeft ("+extent+");\n";
+      if(mode==="vertical"){
+        if(el.valueWidthMode==="fixed")s+="        valueR = valueR.withSizeKeepingCentre ("+f1(valueW)+", valueR.getHeight());\n";
+        else if(el.valueWidthMode!=="element")s+="        valueR = valueR.withSizeKeepingCentre ("+valueAuto+", valueR.getHeight());\n";
+        }else{
+        s+="        valueR = valueR.withSizeKeepingCentre (valueR.getWidth(), "+f1(valueHt)+");\n";
+        }
+      if(gap>0)s+=mode==="vertical"?"        b.removeFromTop ("+f1(gap)+");\n":"        b.removeFromLeft ("+f1(gap)+");\n";
+    }
+  });
+  return s;
+}
+
+function genLabelDraw(el){
+  if(el.type!=="label"&&(!hasLabelBlock(el)||el.showLabel===false))return"        // label скрыт\n";
+  const lbEn=el.labelBorderEnabled!==false;
+  let s="        if (! labelR.isEmpty())\n        {\n";
+  if(lbEn){
+    s+="            g.setColour (juce::Colour::fromString (\""+hexA(el.labelBgColor)+"\"));\n";
+    s+="            g.fillRoundedRectangle (labelR, "+f1(el.labelBorderRadius)+");\n";
+    s+="            g.setColour (juce::Colour::fromString (\""+hexA(el.labelBorderColor)+"\"));\n";
+    s+="            g.drawRoundedRectangle (labelR, "+f1(el.labelBorderRadius)+", "+f1(el.labelBorderWidth)+");\n";
+  }
+  s+="            g.setColour (juce::Colour::fromString (\""+hexA(el.labelColor)+"\"));\n";
+  s+="            g.setFont ("+cppFontField(el.labelFont,el.labelFontWeight,el.labelFontSize)+");\n";
+  s+="            g.drawFittedText (\""+escapeCpp(el.label)+"\", labelR.reduced ("+f1(Math.max(0,num(el.labelPadH)))+", "+f1(Math.max(0,num(el.labelPadV)))+").toNearestInt(), juce::Justification::centred, 1);\n";
+  s+="        }\n";
+  return s;
+}
+function genValueDraw(el){
+  const hV=["knob","slider","meter","valuedisplay"].includes(el.type);
+  if(!hV||el.showValue!==true)return"        // value скрыт\n";
+  const vbEn=el.valueBorderEnabled!==false;
+  let s="        if (! valueR.isEmpty())\n        {\n";
+  if(vbEn){
+    s+="            g.setColour (juce::Colour::fromString (\""+hexA(el.valueBgColor)+"\"));\n";
+    s+="            g.fillRoundedRectangle (valueR, "+f1(el.valueBorderRadius)+");\n";
+    s+="            g.setColour (juce::Colour::fromString (\""+hexA(el.valueBorderColor)+"\"));\n";
+    s+="            g.drawRoundedRectangle (valueR, "+f1(el.valueBorderRadius)+", "+f1(el.valueBorderWidth)+");\n";
+  }
+  s+="            g.setColour (juce::Colour::fromString (\""+hexA(el.valueColor)+"\"));\n";
+  s+="            g.setFont ("+cppFontField(el.valueFont,el.valueFontWeight,el.valueFontSize)+");\n";
+  s+="            g.drawFittedText (getValueText(), valueR.reduced ("+f1(Math.max(0,num(el.valuePadH)))+", "+f1(Math.max(0,num(el.valuePadV)))+").toNearestInt(), juce::Justification::centred, 1);\n";
+  s+="        }\n";
+  return s;
+}
+function genMainDraw(el){
+  const acc="juce::Colour::fromString (\""+hexA(el.accent)+"\")",bC="juce::Colour::fromString (\""+hexA(state.theme.colors.border)+"\")",cC="juce::Colour::fromString (\""+hexA(state.theme.colors.control)+"\")",vC="juce::Colour::fromString (\""+hexA(el.valueColor)+"\")",vBg="juce::Colour::fromString (\""+hexA(el.valueBgColor)+"\")",bgC="juce::Colour::fromString (\""+hexA(state.theme.colors.background)+"\")",lW=f1(Math.max(2,num(el.valueBorderWidth)+2));
+  if(el.type==="knob")return"        auto knobR = mainR.withSizeKeepingCentre (juce::jmin (mainR.getWidth(), mainR.getHeight()), juce::jmin (mainR.getWidth(), mainR.getHeight()));\n        auto centre = knobR.getCentre();\n        auto radius = juce::jmin (knobR.getWidth(), knobR.getHeight()) / 2.0f - "+lW+";\n        const float norm = juce::jlimit (0.0f, 1.0f, (float)((value - minValue) / (maxValue - minValue)));\n        const float pi = juce::MathConstants<float>::pi;\n        const float startA = 134.0f * pi / 180.0f;\n        const float endA = 405.0f * pi / 180.0f;\n        const float toA = startA + norm * (endA - startA);\n        juce::Path track; track.addCentredArc (centre.x, centre.y, radius, radius, 0.0f, startA, endA, true);\n        g.setColour ("+bC+");\n        g.strokePath (track, juce::PathStrokeType ("+lW+", juce::PathStrokeType::curved, juce::PathStrokeType::rounded));\n        juce::Path val; val.addCentredArc (centre.x, centre.y, radius, radius, 0.0f, startA, toA, true);\n        g.setColour ("+acc+");\n        g.strokePath (val, juce::PathStrokeType ("+lW+", juce::PathStrokeType::curved, juce::PathStrokeType::rounded));\n        juce::Path ptr; ptr.addRectangle (-1.25f, -radius + "+lW+", 2.5f, radius * 0.33f);\n        g.setColour ("+vC+");\n        g.fillPath (ptr, juce::AffineTransform::rotation (toA).translated (centre.x, centre.y));\n";
+  if(el.type==="slider"){const hz=el.style==="horizontal";return"        juce::Rectangle<float> trackR;\n"+(hz?"        trackR = juce::Rectangle<float> (mainR.getX(), mainR.getCentreY() - trackThickness/2, mainR.getWidth(), trackThickness);\n":"        trackR = juce::Rectangle<float> (mainR.getCentreX() - trackThickness/2, mainR.getY(), trackThickness, mainR.getHeight());\n")+"        g.setColour ("+cC+"); g.fillRoundedRectangle (trackR, 999.0f);\n        g.setColour ("+bC+"); g.drawRoundedRectangle (trackR, 999.0f, 1.0f);\n        const float norm = juce::jlimit (0.0f, 1.0f, (float)((value - minValue) / (maxValue - minValue)));\n        juce::Rectangle<float> fillR;\n"+(hz?"        fillR = juce::Rectangle<float> (trackR.getX(), trackR.getY(), norm * (trackR.getWidth() - thumbSize) + thumbSize / 2.0f, trackThickness);\n":"        fillR = juce::Rectangle<float> (trackR.getX(), trackR.getBottom() - (norm * (trackR.getHeight() - thumbSize) + thumbSize / 2.0f), trackThickness, norm * (trackR.getHeight() - thumbSize) + thumbSize / 2.0f);\n")+"        g.setColour ("+acc+"); g.fillRoundedRectangle (fillR, 999.0f);\n        juce::Rectangle<float> thumbR;\n"+(hz?"        thumbR = juce::Rectangle<float> (trackR.getX() + (trackR.getWidth()-thumbSize)*norm, trackR.getCentreY() - thumbSize/2, thumbSize, thumbSize);\n":"        thumbR = juce::Rectangle<float> (trackR.getCentreX() - thumbSize/2, trackR.getBottom() - thumbSize - (trackR.getHeight()-thumbSize)*norm, thumbSize, thumbSize);\n")+"        g.setColour ("+vC+"); g.fillEllipse (thumbR);\n        g.setColour ("+bC+"); g.drawEllipse (thumbR, 1.0f);\n"}
+  if(el.type==="button")return"        g.setColour (isOn ? "+acc+" : "+vBg+");\n        g.fillRoundedRectangle (mainR, "+f1(el.cornerRadius)+");\n        g.setColour ("+bC+");\n        g.drawRoundedRectangle (mainR, "+f1(el.cornerRadius)+", 1.0f);\n        g.setColour (isOn ? "+bgC+" : "+vC+");\n        g.setFont ("+f1(el.fontSize)+");\n        g.drawFittedText (\""+escapeCpp(el.label)+"\", mainR.toNearestInt(), juce::Justification::centred, 1);\n";
+  if(el.type==="toggle")return"        const float tw = 42.0f, th = 22.0f;\n        auto tr = juce::Rectangle<float> (mainR.getX(), mainR.getCentreY() - th/2, tw, th);\n        g.setColour (isOn ? "+acc+" : "+vBg+");\n        g.fillRoundedRectangle (tr, 999.0f);\n        g.setColour ("+bC+"); g.drawRoundedRectangle (tr, 999.0f, 1.0f);\n        const float ts = 16.0f;\n        const float tx = isOn ? tr.getRight() - ts - 2.0f : tr.getX() + 2.0f;\n        g.setColour (isOn ? "+bgC+" : "+vC+");\n        g.fillEllipse (juce::Rectangle<float> (tx, tr.getCentreY() - ts/2, ts, ts));\n";
+  if(el.type==="combo")return"        g.setColour ("+vBg+");\n        g.fillRoundedRectangle (mainR, "+f1(el.cornerRadius)+");\n        g.setColour ("+bC+"); g.drawRoundedRectangle (mainR, "+f1(el.cornerRadius)+", 1.0f);\n        g.setColour ("+vC+");\n        g.setFont ("+f1(el.fontSize)+");\n        g.drawFittedText (getSelectedOptionText(), mainR.reduced (8.0f, 0.0f).withTrimmedRight (20.0f).toNearestInt(), juce::Justification::centredLeft, 1);\n        juce::Path a; const auto ar = mainR.withSizeKeepingCentre (12.0f, 8.0f);\n        a.addTriangle (ar.getX(), ar.getY(), ar.getRight(), ar.getY(), ar.getCentreX(), ar.getBottom());\n        g.fillPath (a);\n";
+  if(el.type==="meter"){const hz=el.style==="horizontal";return"        const float trackTh = "+f1(Math.max(6,num(el.valueBorderWidth)+8))+";\n        juce::Rectangle<float> trackR;\n"+(hz?"        trackR = juce::Rectangle<float> (mainR.getX(), mainR.getCentreY() - trackTh/2, mainR.getWidth(), trackTh);\n":"        trackR = juce::Rectangle<float> (mainR.getCentreX() - trackTh/2, mainR.getY(), trackTh, mainR.getHeight());\n")+"        g.setColour ("+cC+"); g.fillRoundedRectangle (trackR, 999.0f);\n        g.setColour ("+bC+"); g.drawRoundedRectangle (trackR, 999.0f, 1.0f);\n        const float norm = juce::jlimit (0.0f, 1.0f, (float)((value - minValue) / (maxValue - minValue)));\n        juce::Rectangle<float> fillR;\n"+(hz?"        fillR = juce::Rectangle<float> (trackR.getX(), trackR.getY(), trackR.getWidth()*norm, trackR.getHeight());\n":"        fillR = juce::Rectangle<float> (trackR.getX(), trackR.getBottom() - trackR.getHeight()*norm, trackR.getWidth(), trackR.getHeight()*norm);\n")+"        g.setColour ("+acc+"); g.fillRoundedRectangle (fillR, 999.0f);\n        g.setColour ("+vC+");\n"+(hz?"        g.fillRect (juce::Rectangle<float> (trackR.getX() + trackR.getWidth()*peak - 1.0f, trackR.getY(), 2.0f, trackR.getHeight()));\n":"        g.fillRect (juce::Rectangle<float> (trackR.getX(), trackR.getBottom() - trackR.getHeight()*peak - 1.0f, trackR.getWidth(), 2.0f));\n")}
+  if(el.type==="valuedisplay")return"        // ValueDisplay is drawn by genValueDraw() using valueR and the shared layout.\n";
+  if(el.type==="group")return"        g.setColour ("+bC+");\n        g.drawRoundedRectangle (mainR, "+f1(el.cornerRadius)+", 1.0f);\n";
+  if(el.type==="tabs"){const g=num(el.tabGap??4);return"        const int n = tabs.size();\n        if (n > 0)\n        {\n            const float gap = "+f1(g)+";\n            const float tw = (mainR.getWidth() - gap * (float)(n - 1)) / (float)n;\n            for (int i = 0; i < n; ++i)\n            {\n                auto tr = juce::Rectangle<float> (mainR.getX() + i*(tw + gap), mainR.getY(), tw, mainR.getHeight());\n                const bool act = (i + 1 == currentTab);\n                g.setColour (act ? "+acc+" : "+vBg+");\n                g.fillRoundedRectangle (tr, "+f1(el.cornerRadius)+");\n                g.setColour (act ? "+bgC+" : "+vC+");\n                g.setFont ("+f1(el.fontSize)+");\n                g.drawFittedText (tabs[i], tr.toNearestInt(), juce::Justification::centred, 1);\n            }\n        }\n";}
+  if(el.type==="waveform")return"        g.setColour ("+vBg+");\n        g.fillRoundedRectangle (mainR, "+f1(el.cornerRadius)+");\n        g.setColour ("+bC+"); g.drawRoundedRectangle (mainR, "+f1(el.cornerRadius)+", 1.0f);\n        g.setColour ("+bC+"); g.drawLine (mainR.getX(), mainR.getCentreY(), mainR.getRight(), mainR.getCentreY(), 1.0f);\n        g.setColour ("+acc+");\n        for (float x = mainR.getX() + 2; x < mainR.getRight() - 2; x += 3)\n        {\n            const float t = x * 0.13f;\n            const float rnd = juce::jlimit (-1.0f, 1.0f, std::sin (t)*0.45f + std::sin (t*3.7f)*0.28f + std::sin (t*0.31f)*0.27f);\n            const float amp = std::abs (rnd) * mainR.getHeight() * 0.42f;\n            g.fillRect (juce::Rectangle<float> (x, mainR.getCentreY() - amp, 2.0f, amp*2.0f));\n        }\n";
+  if(el.type==="label")return"        // Label is rendered through genLabelDraw() and the shared layout model.\n";
+  if(el.type==="text")return"        g.setColour ("+vBg+");\n        g.fillRoundedRectangle (mainR, "+f1(el.cornerRadius)+");\n        g.setColour ("+bC+"); g.drawRoundedRectangle (mainR, "+f1(el.cornerRadius)+", 1.0f);\n        g.setColour ("+vC+");\n        g.setFont ("+f1(el.fontSize)+");\n        g.drawFittedText (text, mainR.reduced (8.0f, 0.0f).toNearestInt(), juce::Justification::centredLeft, 1);\n";
+  return"        // control\n";
+}
+function generateElementClass(el){
+  const tabsArr=(el.options||"").split(",").map(s=>s.trim()).filter(Boolean).map(s=>'"'+escapeCpp(s)+'"').join(", ");
+  const valueDecimals=Math.max(0,Math.min(4,(String(el.step??"").split(".")[1]||"").length));
+  const hasRange=["knob","slider","valuedisplay"].includes(el.type);
+  const hz=el.type==="slider"&&el.style==="horizontal";
+  let s="class "+safeVar(el.id)+"Component : public juce::Component\n{\npublic:\n";
+  s+="    juce::String paramId = \""+escapeCpp(el.paramId||"")+"\";\n";
+  s+="    double value = "+num(el.value)+";\n";
+  s+="    double minValue = "+num(el.min)+", maxValue = "+num(el.max)+";\n";
+  if(hasRange){
+    s+="    double stepValue = "+num(el.step)+";\n";
+    s+="    double defaultValue = "+num(el.def)+";\n";
+    s+="    double dragSensitivity = "+num(el.dragSensitivity||1)+";\n";
+    s+="    double dragStartValue = 0.0;\n";
+  }
+  if(el.type==="slider"){
+    s+="    float trackThickness = "+f1(Math.max(6,num(el.valueBorderWidth)+8))+";\n";
+    s+="    float thumbSize = "+f1(Math.max(12,num(el.valueBorderWidth)+14))+";\n";
+  }
+  s+="    float peak = "+num(el.peakVal??el.value)+";\n";
+  s+="    bool isOn = "+(el.value?"true":"false")+";\n";
+  s+="    int currentTab = 1;\n";
+  s+="    juce::String text = \""+escapeCpp(el.text||"")+"\";\n";
+  s+="    juce::StringArray tabs = { "+tabsArr+" };\n\n";
+  s+="    juce::String getValueText() const { return juce::String (value, "+valueDecimals+"); }\n";
+  s+="    juce::String getSelectedOptionText() const { if (tabs.isEmpty()) return {}; const int i = juce::jlimit (1, tabs.size(), (int) value) - 1; return tabs[i]; }\n\n";
+  if(el.type==="button"){
+    if(el.style==="toggle")s+="    void mouseDown (const juce::MouseEvent&) override { isOn = ! isOn; repaint(); }\n";
+    else s+="    void mouseDown (const juce::MouseEvent&) override { isOn = true; repaint(); }\n    void mouseUp (const juce::MouseEvent&) override { isOn = false; repaint(); }\n";
+  }else if(el.type==="toggle"){
+    s+="    void mouseDown (const juce::MouseEvent&) override { isOn = ! isOn; repaint(); }\n";
+  }else if(el.type==="combo"){
+    s+="    PluginLookAndFeel comboLookAndFeel;\n";
+    s+="    void initialiseComboLookAndFeel()\n    {\n";
+    s+="        comboLookAndFeel.setPopupMenuStyle (juce::Colour::fromString (\""+hexA(el.menuColor)+"\"),\n";
+    s+="                                             juce::Colour::fromString (\""+hexA(el.menuBorderColor)+"\"),\n";
+    s+="                                             juce::Colour::fromString (\""+hexA(el.menuHoverColor)+"\"),\n";
+    s+="                                             juce::Colour::fromString (\""+hexA(state.theme.colors.text)+"\"),\n";
+    s+="                                             juce::Colour::fromString (\""+hexA(state.theme.colors.text)+"\"), "+f1(el.menuCornerRadius)+", "+f1(el.menuBorderWidth)+");\n";
+    s+="    }\n";
+    s+="    "+safeVar(el.id)+"Component() { initialiseComboLookAndFeel(); }\n";
+    s+="    void mouseDown (const juce::MouseEvent&) override\n    {\n";
+    s+="        juce::PopupMenu menu;\n";
+    s+="        menu.setLookAndFeel (&comboLookAndFeel);\n";
+    s+="        for (int i = 0; i < tabs.size(); ++i)\n";
+    s+="            menu.addItem (i + 1, tabs[i], true, (i + 1 == (int) value), [this, i] { value = (double)(i + 1); repaint(); });\n";
+    s+="        menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this));\n";
+    s+="    }\n\n";
+  }
+  if(hasRange){
+    s+="    double snapAndClamp (double v) const\n    {\n";
+    s+="        if (stepValue > 0.0)\n            v = minValue + std::round ((v - minValue) / stepValue) * stepValue;\n";
+    s+="        return juce::jlimit (minValue, maxValue, v);\n    }\n\n";
+    s+="    void setValueInternal (double v) { value = snapAndClamp (v); repaint(); }\n\n";
+    s+="    void mouseDown (const juce::MouseEvent&) override { dragStartValue = value; }\n";
+    s+="    void mouseDrag (const juce::MouseEvent& e) override\n    {\n";
+    s+=hz?"        const auto delta = (double) e.getDistanceFromDragStartX();\n":"        const auto delta = - (double) e.getDistanceFromDragStartY();\n";
+    s+="        const auto sensitivity = dragSensitivity * (maxValue - minValue) / 200.0;\n";
+    s+="        setValueInternal (dragStartValue + delta * sensitivity);\n    }\n";
+    s+="    void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel) override\n    {\n";
+    s+="        const auto direction = wheel.deltaY > 0.0f ? 1.0 : -1.0;\n";
+    s+="        auto increment = (maxValue - minValue) / 100.0;\n";
+    s+="        if (stepValue > increment) increment = stepValue;\n";
+    s+="        setValueInternal (value + direction * increment);\n    }\n";
+    s+="    void mouseDoubleClick (const juce::MouseEvent&) override { setValueInternal (defaultValue); }\n\n";
+  }
+  if(el.type==="tabs"){
+    s+="    void mouseDown (const juce::MouseEvent& e) override\n    {\n";
+    s+="        const auto mainR = computeLayout().mainR;\n";
+    s+="        const int n = tabs.size();\n";
+    s+="        if (n <= 0) return;\n";
+    s+="        const float gap = "+f1(num(el.tabGap??4))+";\n";
+    s+="        const float tw = (mainR.getWidth() - gap * (float) (n - 1)) / (float) n;\n";
+    s+="        for (int i = 0; i < n; ++i)\n        {\n";
+    s+="            const auto tabR = juce::Rectangle<float> (mainR.getX() + (float) i * (tw + gap), mainR.getY(), tw, mainR.getHeight());\n";
+    s+="            if (tabR.contains (e.position))\n            {\n";
+    s+="                currentTab = i + 1;\n                value = (double) (i + 1);\n                repaint();\n                break;\n            }\n        }\n    }\n\n";
+  }
+  s+="    struct Layout\n    {\n        juce::Rectangle<float> labelR, mainR, valueR;\n    };\n\n";
+  s+="    Layout computeLayout() const\n    {\n";
+  s+=genLayoutBlock(el);
+  s+="        return { labelR, mainR, valueR };\n    }\n\n";
+  s+="    void paint (juce::Graphics& g) override\n    {\n        g.fillAll (juce::Colours::transparentBlack);\n";
+  s+="        const auto layout = computeLayout();\n        const auto labelR = layout.labelR;\n        const auto valueR = layout.valueR;\n        const auto mainR = layout.mainR;\n";
+  s+=genLabelDraw(el)+genValueDraw(el)+genMainDraw(el);
+  s+="    }\n\n    void resized() override { repaint(); }\n};\n";
+  return s;
+}
+function generateCanvasElementsH(){
+  let s="#pragma once\n\n";
+  // Stable dependencies: this header must compile with any Canvas composition,
+  // including projects with no Combo elements and projects containing all types.
+  s+="#include <JuceHeader.h>\n#include <cmath>\n#include \"LookAndFeel.h\"\n";
+  s+="\n// ============================================================\n// Canvas element components — generated from JUCE UI Lab\n// One self-contained juce::Component per canvas element.\n// This header has stable dependencies independent of Canvas contents.\n// ============================================================\n";
+  if(!state.elements.length)return s+"\n// На канвасе нет элементов.\n";
+  s+="\n"+state.elements.map((el,i)=>{
+    return "// ============================================================\n"+
+           "// COMPONENT "+(i+1)+": "+el.id+" ("+el.type+")\n"+
+           "// ============================================================\n\n"+
+           generateElementClass(el);
+  }).join("\n");
+  return s;
+}
+
+let currentCodeTab="editor-h";
+
+function generatePluginEditorH(){
+  let s="";
+  s+="#pragma once\n\n";
+  s+="#include <JuceHeader.h>\n";
+  s+="#include \"PluginProcessor.h\"\n";
+  s+="#include \"LookAndFeel.h\"\n\n";
+  s+="#include <memory>\n#include <vector>\n\n";
+  s+="// JUCE 9 Plugin Editor scaffold generated from the Canvas.\n";
+  s+="// The Canvas is the editor body; every visible Canvas element becomes\n";
+  s+="// a child Component owned by the editor (see CanvasElements.h).\n\n";
+  s+="class PluginAudioProcessorEditor : public juce::AudioProcessorEditor\n";
+  s+="{\n";
+  s+="public:\n";
+  s+="    explicit PluginAudioProcessorEditor (PluginAudioProcessor&);\n";
+  s+="    ~PluginAudioProcessorEditor() override;\n\n";
+  s+="    void paint (juce::Graphics&) override;\n";
+  s+="    void resized() override;\n\n";
+  s+="private:\n";
+  s+="    PluginAudioProcessor& processorRef;\n";
+  s+="    PluginLookAndFeel lookAndFeel;\n";
+  s+="    std::vector<std::unique_ptr<juce::Component>> canvasElements;\n\n";
+  s+="    void buildCanvas();\n";
+  s+="    void layoutCanvas();\n\n";
+  s+="    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginAudioProcessorEditor)\n";
+  s+="};\n";
+  return s;
+}
+
+function generatePluginEditorCpp(){
+  let s="";
+  s+="#include \"PluginEditor.h\"\n";
+  s+="#include \"LookAndFeel.h\"\n";
+  s+="#include \"CanvasElements.h\"\n\n";
+  s+="#include <cmath>\n\n";
+  s+="// ============================================================\n";
+  s+="// PluginEditor implementation\n";
+  s+="// ============================================================\n\n";
+  s+="PluginAudioProcessorEditor::PluginAudioProcessorEditor (PluginAudioProcessor& p)\n";
+  s+="    : AudioProcessorEditor (&p),\n";
+  s+="      processorRef (p)\n";
+  s+="{\n";
+  s+="    setLookAndFeel (&lookAndFeel);\n";
+  s+="    setSize ("+Math.round(num(state.canvasWidth))+", "+Math.round(num(state.canvasHeight))+");\n";
+  s+="    buildCanvas();\n";
+  s+="}\n\n";
+  s+="PluginAudioProcessorEditor::~PluginAudioProcessorEditor()\n";
+  s+="{\n";
+  s+="    setLookAndFeel (nullptr);\n";
+  s+="}\n\n";
+  s+="void PluginAudioProcessorEditor::buildCanvas()\n";
+  s+="{\n";
+  if(state.elements.length===0){
+    s+="}\n\n";
+  }else{
+    state.elements.forEach((el,idx)=>{
+      const cls=safeVar(el.id)+"Component";
+      s+="    {\n";
+      s+="        auto component = std::make_unique<"+cls+">();\n";
+      s+="        addAndMakeVisible (component.get());\n";
+      if(el.visible===false) s+="        component->setVisible (false);\n";
+      if(el.enabled===false) s+="        component->setEnabled (false);\n";
+      s+="        canvasElements.push_back (std::move (component));\n";
+      s+="    }\n";
+    });
+    s+="}\n\n";
+  }
+  s+="void PluginAudioProcessorEditor::layoutCanvas()\n";
+  s+="{\n";
+  state.elements.forEach((el,idx)=>{
+    s+="    if (canvasElements.size() > "+idx+") canvasElements["+idx+"]->setBounds ("+Math.round(num(el.x))+", "+Math.round(num(el.y))+", "+Math.max(20,Math.round(num(el.w)))+", "+Math.max(20,Math.round(num(el.h)))+");\n";
+  });
+  s+="}\n\n";
+  s+="void PluginAudioProcessorEditor::paint (juce::Graphics& g)\n";
+  s+="{\n";
+  s+="    g.fillAll (juce::Colour::fromString (\""+hexA(state.canvasColor||state.theme.colors.background)+"\"));\n";
+  s+="}\n\n";
+  s+="void PluginAudioProcessorEditor::resized()\n";
+  s+="{\n";
+  s+="    layoutCanvas();\n";
+  s+="}\n";
+  return s;
+}
+
+function generateLookAndFeelH(){
+  let s="";
+  s+="#pragma once\n\n";
+  s+="#include <JuceHeader.h>\n\n";
+  s+="// Shared visual defaults for the whole JUCE 9 plugin UI.\n";
+  s+="// This file is intentionally not tied to any individual Canvas element.\n";
+  s+="class PluginLookAndFeel : public juce::LookAndFeel_V4\n";
+  s+="{\n";
+  s+="public:\n";
+  s+="    PluginLookAndFeel();\n";
+  s+="    void applyDefaultColours();\n";
+  s+="    void setPopupMenuStyle (juce::Colour background, juce::Colour border,\n";
+  s+="                            juce::Colour highlightedBackground,\n";
+  s+="                            juce::Colour text, juce::Colour highlightedText,\n";
+  s+="                            float cornerRadius, float borderWidth);\n";
+  s+="    void drawPopupMenuBackgroundWithOptions (juce::Graphics& g, int width, int height,\n";
+  s+="                                            const juce::PopupMenu::Options&) override;\n\n";
+  s+="private:\n";
+  s+="    juce::Colour popupBackground { juce::Colours::black };\n";
+  s+="    juce::Colour popupBorder { juce::Colours::transparentBlack };\n";
+  s+="    juce::Colour popupHighlightedBackground { juce::Colours::darkgrey };\n";
+  s+="    float popupCornerRadius = 6.0f;\n";
+  s+="    float popupBorderWidth = 1.0f;\n\n";
+  s+="    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginLookAndFeel)\n";
+  s+="};\n";
+  return s;
+}
+
+function generateLookAndFeelCpp(){
+  const c=state.theme.colors||THEMES["Bitwig Dark"];
+  let s="";
+  s+="#include \"LookAndFeel.h\"\n\n";
+  s+="PluginLookAndFeel::PluginLookAndFeel()\n";
+  s+="{\n";
+  s+="    applyDefaultColours();\n";
+  s+="}\n\n";
+  s+="void PluginLookAndFeel::setPopupMenuStyle (juce::Colour background, juce::Colour border,\n";
+  s+="                                              juce::Colour highlightedBackground,\n";
+  s+="                                              juce::Colour text, juce::Colour highlightedText,\n";
+  s+="                                              float cornerRadius, float borderWidth)\n";
+  s+="{\n";
+  s+="    popupBackground = background;\n";
+  s+="    popupBorder = border;\n";
+  s+="    popupHighlightedBackground = highlightedBackground;\n";
+  s+="    popupCornerRadius = juce::jmax (0.0f, cornerRadius);\n";
+  s+="    popupBorderWidth = juce::jmax (0.0f, borderWidth);\n";
+  s+="    setColour (juce::PopupMenu::backgroundColourId, popupBackground);\n";
+  s+="    setColour (juce::PopupMenu::highlightedBackgroundColourId, popupHighlightedBackground);\n";
+  s+="    setColour (juce::PopupMenu::textColourId, text);\n";
+  s+="    setColour (juce::PopupMenu::highlightedTextColourId, highlightedText);\n";
+  s+="}\n\n";
+  s+="void PluginLookAndFeel::applyDefaultColours()\n";
+  s+="{\n";
+  s+="    setColour (juce::ResizableWindow::backgroundColourId, juce::Colour::fromString (\""+hexA(c.background)+"\"));\n";
+  s+="    setColour (juce::Label::textColourId, juce::Colour::fromString (\""+hexA(c.text)+"\"));\n";
+  s+="    setColour (juce::Label::textWhenEditingColourId, juce::Colour::fromString (\""+hexA(c.text)+"\"));\n";
+  s+="    setColour (juce::Label::outlineColourId, juce::Colour::fromString (\""+hexA(c.border)+"\"));\n";
+  s+="    setColour (juce::TextButton::buttonColourId, juce::Colour::fromString (\""+hexA(c.control)+"\"));\n";
+  s+="    setColour (juce::TextButton::buttonOnColourId, juce::Colour::fromString (\""+hexA(c.accent)+"\"));\n";
+  s+="    setColour (juce::TextButton::textColourOffId, juce::Colour::fromString (\""+hexA(c.text)+"\"));\n";
+  s+="    setColour (juce::TextButton::textColourOnId, juce::Colour::fromString (\""+hexA(c.background)+"\"));\n";
+  s+="    setColour (juce::ToggleButton::textColourId, juce::Colour::fromString (\""+hexA(c.text)+"\"));\n";
+  s+="    setColour (juce::ComboBox::backgroundColourId, juce::Colour::fromString (\""+hexA(c.control)+"\"));\n";
+  s+="    setColour (juce::ComboBox::outlineColourId, juce::Colour::fromString (\""+hexA(c.border)+"\"));\n";
+  s+="    setColour (juce::ComboBox::textColourId, juce::Colour::fromString (\""+hexA(c.text)+"\"));\n";
+  s+="    setColour (juce::ComboBox::arrowColourId, juce::Colour::fromString (\""+hexA(c.textSecondary)+"\"));\n";
+  s+="    setColour (juce::Slider::thumbColourId, juce::Colour::fromString (\""+hexA(c.text)+"\"));\n";
+  s+="    setColour (juce::Slider::trackColourId, juce::Colour::fromString (\""+hexA(c.control)+"\"));\n";
+  s+="    setColour (juce::PopupMenu::backgroundColourId, juce::Colour::fromString (\""+hexA(c.panel)+"\"));\n";
+  s+="    setColour (juce::PopupMenu::textColourId, juce::Colour::fromString (\""+hexA(c.text)+"\"));\n";
+  s+="    setColour (juce::PopupMenu::highlightedBackgroundColourId, juce::Colour::fromString (\""+hexA(c.control)+"\"));\n";
+  s+="    setColour (juce::PopupMenu::highlightedTextColourId, juce::Colour::fromString (\""+hexA(c.text)+"\"));\n";
+  s+="}\n\n";
+  s+="void PluginLookAndFeel::drawPopupMenuBackgroundWithOptions (juce::Graphics& g, int width, int height, const juce::PopupMenu::Options&)\n";
+  s+="{\n";
+  s+="    g.fillAll (popupBackground);\n";
+  s+="    if (popupBorderWidth > 0.0f && width > 2 && height > 2)\n";
+  s+="    {\n";
+  s+="        g.setColour (popupBorder);\n";
+  s+="        g.drawRoundedRectangle (1.0f, 1.0f, (float) width - 2.0f, (float) height - 2.0f, popupCornerRadius, popupBorderWidth);\n";
+  s+="    }\n";
+  s+="}\n";
+  return s;
+}
+
+function generateAllFiles(){
+  let s="";
+  s+="// ============================================================\n";
+  s+="// GENERATED JUCE 9 UI PROJECT SCAFFOLD\n";
+  s+="// Canvas is the body of PluginAudioProcessorEditor; all Canvas elements\n";
+  s+="// are instantiated there and styled by the shared LookAndFeel.\n";
+  s+="// ============================================================\n\n";
+  s+="// FILE: Source/PluginEditor.h\n\n"+generatePluginEditorH()+"\n\n";
+  s+="// FILE: Source/PluginEditor.cpp\n\n"+generatePluginEditorCpp()+"\n\n";
+  s+="// FILE: Source/CanvasElements.h\n\n"+generateCanvasElementsH()+"\n\n";
+  s+="// FILE: Source/LookAndFeel.h\n\n"+generateLookAndFeelH()+"\n\n";
+  s+="// FILE: Source/LookAndFeel.cpp\n\n"+generateLookAndFeelCpp();
+  return s;
+}
+
+function getCodeForTab(tab){
+  switch(tab){
+    case "editor-h": return generatePluginEditorH();
+    case "editor-cpp": return generatePluginEditorCpp();
+    case "elements-h": return generateCanvasElementsH();
+    case "laf-h": return generateLookAndFeelH();
+    case "laf-cpp": return generateLookAndFeelCpp();
+    case "all": return generateAllFiles();
+    default: return generatePluginEditorH();
+  }
+}
+
+function getFileNameForTab(tab){
+  switch(tab){
+    case "editor-h": return "PluginEditor.h";
+    case "editor-cpp": return "PluginEditor.cpp";
+    case "elements-h": return "CanvasElements.h";
+    case "laf-h": return "LookAndFeel.h";
+    case "laf-cpp": return "LookAndFeel.cpp";
+    case "all": return "JUCE9_UI_Project.txt";
+    default: return "PluginEditor.h";
+  }
+}
+
+function updateCodeView(){
+  const o=document.getElementById("code-output");
+  if(!o)return;
+  o.textContent=getCodeForTab(currentCodeTab);
+}
+function updateFolderStatus(){const el=document.getElementById("folder-status-text");if(!el)return;el.textContent=state.dirHandle?("Подключено: "+state.dirName):"Папка не подключена"}
+function getProjectJSON(){
+  const cs=document.getElementById("code-section");
+  const cph=cs&&cs.offsetHeight>0?cs.offsetHeight:220;
+  return JSON.stringify({version:state.version,elements:state.elements,canvasWidth:state.canvasWidth,canvasHeight:state.canvasHeight,canvasColor:state.canvasColor,theme:state.theme,selectedId:state.selectedId,zoom:state.zoom,gridSnap:state.gridSnap,showLeftSidebar:state.showLeftSidebar,showRightSidebar:state.showRightSidebar,showFrame:state.showFrame,rightTab:state.rightTab,mode:state.mode,codePanelHeight:cph},null,2)
+}
+async function requestDirPermission(){if(!state.dirHandle)return false;const opts={mode:"readwrite"};if((await state.dirHandle.queryPermission(opts))==="granted")return true;return(await state.dirHandle.requestPermission(opts))==="granted"}
+async function saveToFolder(){if(!state.dirHandle){status("Сначала подключи папку");return false}try{const ok=await requestDirPermission();if(!ok){status("Нет доступа");return false}let fh;try{fh=await state.dirHandle.getFileHandle("ui-lab-project.json",{create:true})}catch(e){fh=await state.dirHandle.getFileHandle("ui-lab-project.json")}const w=await fh.createWritable();await w.write(getProjectJSON());await w.close();status("Сохранено в папку");return true}catch(e){status("Не удалось сохранить");return false}}
+async function loadFromFolder(){if(!state.dirHandle){status("Сначала подключи папку");return false}try{const ok=await requestDirPermission();if(!ok){status("Нет доступа");return false}let fh;try{fh=await state.dirHandle.getFileHandle("ui-lab-project.json")}catch(e){status("Файл не найден");return false}const file=await fh.getFile();const text=await file.text();loadProjectFromJSON(text);status("Загружено из папки");return true}catch(e){status("Ошибка чтения");return false}}
+async function connectFolder(){if(!window.showDirectoryPicker){status("Этот браузер не даёт доступ");return}try{const h=await window.showDirectoryPicker({mode:"readwrite"});state.dirHandle=h;state.dirName=h.name||"Папка";updateFolderStatus();await loadPresetsFromFile();status("Папка подключена")}catch(e){if(e.name!=="AbortError")status("Не удалось подключить")}}
+function initCanvasPanning(){
+  const wr=document.getElementById("canvas-wrapper");
+  let pan=false,sX=0,sY=0,sL=0,sT=0;
+  wr.addEventListener("mousedown",e=>{if(e.button!==1)return;e.preventDefault();pan=true;sX=e.clientX;sY=e.clientY;sL=wr.scrollLeft;sT=wr.scrollTop;wr.classList.add("panning")});
+  window.addEventListener("mousemove",e=>{if(!pan)return;wr.scrollLeft=sL-(e.clientX-sX);wr.scrollTop=sT-(e.clientY-sY)});
+  window.addEventListener("mouseup",e=>{if(e.button!==1)return;pan=false;wr.classList.remove("panning")});
+  wr.addEventListener("auxclick",e=>{if(e.button===1)e.preventDefault()});
+}
+function initCanvasWheel(){
+  const wr=document.getElementById("canvas-wrapper");
+  wr.addEventListener("wheel",e=>{
+    if(state.mode!=="test")return;
+    e.preventDefault();
+    const t=e.target.closest("[data-id]");
+    if(!t)return;
+    const el=state.elements.find(i=>i.id===t.dataset.id);
+    if(!el||el.enabled===false)return;
+    e.stopPropagation();
+    const dir=e.deltaY<0?1:-1;
+    if(["knob","slider","valuedisplay"].includes(el.type)){
+      const range=(num(el.max)-num(el.min))||1;let inc=range/100;
+      if(el.step&&inc<num(el.step))inc=num(el.step);
+      el.value=clampValue(el,num(el.value)+dir*inc);
+    }else if(["combo","tabs"].includes(el.type)){
+      const n=(el.options||"").split(",").map(s=>s.trim()).filter(Boolean).length;
+      if(n>0)el.value=Math.max(1,Math.min(n,num(el.value)+dir));
+    }else return;
+    refreshUI({canvas:true,inspector:true,code:true});
+  },{passive:false,capture:true});
+}
+
+function setupEventListeners(){
+  document.getElementById("canvas").addEventListener("contextmenu",e=>{e.preventDefault()});
+  document.getElementById("btn-toggle-left").onclick=()=>{state.showLeftSidebar=!state.showLeftSidebar;updateLayoutState()};
+  document.getElementById("btn-toggle-right").onclick=()=>{state.showRightSidebar=!state.showRightSidebar;updateLayoutState()};
+  document.getElementById("btn-toggle-frame").onclick=()=>{state.showFrame=!state.showFrame;document.getElementById("btn-toggle-frame").classList.toggle("active",!!state.showFrame);syncFrame()};
+  document.getElementById("btn-connect-folder").onclick=connectFolder;
+  document.getElementById("btn-save-folder").onclick=saveToFolder;
+  document.getElementById("btn-load-folder").onclick=loadFromFolder;
+  document.getElementById("btn-add").onclick=()=>{
+    const t=document.getElementById("add-type-select").value;
+    const d=getDefaultElementProps(t);
+    const nId=generateUniqueId(t);
+    const nEl={...d,id:nId,type:t,label:d.label||nId,x:40+(state.elements.length*10)%200,y:40+(state.elements.length*10)%200,w:Math.max(20,num(d.w)||(t==="knob"?80:(t==="slider"?60:120))),h:Math.max(20,num(d.h)||(t==="knob"?90:(t==="slider"?140:40)))};
+    state.elements.push(nEl);renderCanvas();setSelected(nId);status(`Добавлен ${nId}`);
+  };
+  document.getElementById("btn-duplicate").onclick=()=>{
+    const el=state.elements.find(i=>i.id===state.selectedId);if(!el)return;
+    const cl=JSON.parse(JSON.stringify(el));cl.id=generateUniqueId(el.type);cl.x+=15;cl.y+=15;
+    state.elements.push(cl);renderCanvas();setSelected(cl.id);status(`Продублирован: ${cl.id}`);
+  };
+  document.getElementById("btn-delete").onclick=()=>{if(!state.selectedId)return;const idx=state.elements.findIndex(i=>i.id===state.selectedId);if(idx!==-1){const rm=state.elements.splice(idx,1)[0];state.selectedId=state.elements[0]?state.elements[0].id:null;renderElementList();refreshUI({canvas:true,inspector:true,code:true});status(`Удалён ${rm.id}`)}};
+  document.getElementById("mode-edit").onclick=()=>setMode("edit");
+  document.getElementById("mode-test").onclick=()=>setMode("test");
+  document.getElementById("zoom-select").onchange=e=>{state.zoom=e.target.value;applyZoom()};
+  document.getElementById("grid-snap-select").onchange=e=>{state.gridSnap=parseInt(e.target.value)||0;renderCanvas()};
+  const ccp=document.getElementById("canvas-color-picker");if(ccp){ccp.value=state.canvasColor||state.theme.colors.panel;ccp.oninput=e=>{state.canvasColor=e.target.value;renderCanvas()}}
+  const align=t=>{const s=state.elements.find(i=>i.id===state.selectedId);if(!s)return;if(t==="left")s.x=0;if(t==="center-h")s.x=Math.round((state.canvasWidth-s.w)/2);if(t==="right")s.x=state.canvasWidth-s.w;if(t==="top")s.y=0;if(t==="center-v")s.y=Math.round((state.canvasHeight-s.h)/2);if(t==="bottom")s.y=state.canvasHeight-s.h;refreshUI({canvas:true,inspector:true,code:true})};
+  document.getElementById("align-left").onclick=()=>align("left");document.getElementById("align-center-h").onclick=()=>align("center-h");document.getElementById("align-right").onclick=()=>align("right");document.getElementById("align-top").onclick=()=>align("top");document.getElementById("align-center-v").onclick=()=>align("center-v");document.getElementById("align-bottom").onclick=()=>align("bottom");
+  document.querySelectorAll(".sidebar-tab[data-right-tab]").forEach(tab=>{
+    tab.onclick=()=>{
+      document.querySelectorAll(".sidebar-tab[data-right-tab]").forEach(t=>t.classList.remove("active"));
+      tab.classList.add("active");
+      state.rightTab=tab.dataset.rightTab;
+      renderInspector();
+    };
+  });
+  document.querySelectorAll(".code-tab[data-code-tab]").forEach(tab=>{
+    tab.onclick=()=>{
+      document.querySelectorAll(".code-tab[data-code-tab]").forEach(t=>t.classList.remove("active"));
+      tab.classList.add("active");
+      currentCodeTab=tab.dataset.codeTab;
+      updateCodeView();
+    };
+  });
+  document.getElementById("btn-copy-code").onclick=async()=>{const t=document.getElementById("code-output").textContent;try{await navigator.clipboard.writeText(t)}catch(_){const d=document.createElement("textarea");document.body.appendChild(d);d.value=t;d.select();document.execCommand("copy");document.body.removeChild(d)}status("Скопировано!")};
+  document.getElementById("btn-download-code").onclick=()=>{
+    const content=document.getElementById("code-output").textContent;
+    const fileName=getFileNameForTab(currentCodeTab);
+    const blob=new Blob([content],{type:"text/plain;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=fileName;a.click();
+    URL.revokeObjectURL(url);
+    status("Файл "+fileName+" скачан");
+  };
+  document.getElementById("btn-download-json").onclick=()=>{const d="data:text/json;charset=utf-8,"+encodeURIComponent(getProjectJSON());const a=document.createElement("a");a.setAttribute("href",d);a.setAttribute("download","juce_ui_layout.json");a.click();status("JSON сохранён!")};
+  document.getElementById("btn-import-json").onclick=()=>{document.getElementById("file-input").click()};
+  document.getElementById("file-input").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>loadProjectFromJSON(ev.target.result);r.readAsText(f)};
+  window.addEventListener("keydown",e=>{if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName))return;if(e.key==="Delete"||e.key==="Backspace")document.getElementById("btn-delete").click();else if((e.ctrlKey||e.metaKey)&&e.key==="d"){e.preventDefault();document.getElementById("btn-duplicate").click()}});
+
+  /* ---------- Code panel resizer ---------- */
+  const resizer=document.getElementById("code-resizer");
+  const codeSec=document.getElementById("code-section");
+  if(resizer&&codeSec){
+    let startY=0,startH=0;
+    const MIN_H=80;
+    resizer.addEventListener("pointerdown",e=>{
+      if(e.button!==0)return;
+      e.preventDefault();
+      startY=e.clientY;
+      startH=codeSec.offsetHeight;
+      resizer.classList.add("active");
+      resizer.setPointerCapture(e.pointerId);
+      const onMove=ev=>{
+        const delta=startY-ev.clientY;
+        const newH=Math.max(MIN_H,Math.min(window.innerHeight*0.7,startH+delta));
+        codeSec.style.height=newH+"px";
+      };
+      const onUp=ev=>{
+        resizer.classList.remove("active");
+        resizer.releasePointerCapture(ev.pointerId);
+        window.removeEventListener("pointermove",onMove);
+        window.removeEventListener("pointerup",onUp);
+      };
+      window.addEventListener("pointermove",onMove);
+      window.addEventListener("pointerup",onUp);
+    });
+  }
+}
+window.onload=()=>{initCanvasPanning();initCanvasWheel();setupEventListeners();loadDefaultLayout();applyThemeCSS();applyZoom();renderElementList();refreshUI({canvas:true,inspector:true,code:true});updateLayoutState();syncFrame();updateFolderStatus();updateModeActionState()};
+</script>
+<script>
+/* ============================================================
+   UI enhancements and Inspector helpers
+   ============================================================ */
+(function(){
+  "use strict";
+
+  /* ---------- 1) Toggle Code panel ---------- */
+  var CLOSE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/><path d="m15 8-3 3-3-3"/><path d="M12 11V5"/></svg>Код';
+  var OPEN_ICON  = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/><path d="m15 18-3-3-3 3"/><path d="M12 13v5"/></svg>Код';
+
+  function setupToggleCode(){
+    var btn  = document.getElementById("btn-toggle-code");
+    var sec  = document.querySelector(".code-section");
+    if(!btn || !sec) return;
+    var visible = !sec.classList.contains("hidden");
+    btn.classList.toggle("active", visible);
+    btn.innerHTML = visible ? CLOSE_ICON : OPEN_ICON;
+    btn.addEventListener("click", function(){
+      visible = !visible;
+      sec.classList.toggle("hidden", !visible);
+      btn.innerHTML = visible ? CLOSE_ICON : OPEN_ICON;
+      btn.classList.toggle("active", visible);
+    });
+  }
+
+  /* ---------- 2) Sync Левая / Инспектор buttons with panel visibility ---------- */
+  /* These buttons get .active (neutral bg) when their panel is visible, matching Код. */
+  function wrapPanelToggles(){
+    var btnL = document.getElementById("btn-toggle-left");
+    var btnR = document.getElementById("btn-toggle-right");
+    var sideL = document.getElementById("sidebar-left");
+    var sideR = document.getElementById("sidebar-right");
+    function syncActive(){
+      if(btnL && sideL) btnL.classList.toggle("active", !sideL.classList.contains("collapsed"));
+      if(btnR && sideR) btnR.classList.toggle("active", !sideR.classList.contains("collapsed"));
+    }
+    if(btnL){
+      var origL = btnL.onclick;
+      btnL.onclick = function(e){ if(origL) origL.call(this, e); syncActive(); };
+    }
+    if(btnR){
+      var origR = btnR.onclick;
+      btnR.onclick = function(e){ if(origR) origR.call(this, e); syncActive(); };
+    }
+    syncActive();
+  }
+
+  /* ---------- 3) Inspector custom dropdowns ---------- */
+  /* The native select is hidden (kept functional for original JS handlers).
+     A button with arrow ▾ is shown. Clicking opens a popup menu like combo_1.
+     Selected item has a ✓ on the right (no accent colour).                    */
+  var openMenuWrap = null;
+
+  function closeOpenMenu(){
+    if(openMenuWrap){
+      var menu = openMenuWrap.querySelector(".cs-menu");
+      var btn  = openMenuWrap.querySelector(".cs-button");
+      if(menu) menu.classList.remove("open");
+      if(btn)  btn.classList.remove("cs-open");
+      /* Clean up scroll/resize listeners */
+      if(openMenuWrap._cleanup){
+        window.removeEventListener("scroll", openMenuWrap._cleanup, true);
+        window.removeEventListener("resize", openMenuWrap._cleanup);
+        openMenuWrap._cleanup = null;
+      }
+      openMenuWrap = null;
+      document.removeEventListener("pointerdown", onOutsideClick, true);
+      document.removeEventListener("keydown", onEscape, true);
+    }
+  }
+  function onOutsideClick(e){
+    if(!openMenuWrap) return;
+    if(!openMenuWrap.contains(e.target)) closeOpenMenu();
+  }
+  function onEscape(e){
+    if(e.key === "Escape") closeOpenMenu();
+  }
+
+  function enhanceSelect(sel){
+    if(sel.dataset.csEnhanced === "1") return;
+    sel.dataset.csEnhanced = "1";
+
+    /* Wrap the select in a relative container */
+    var wrap = document.createElement("div");
+    wrap.className = "cs-wrap";
+    sel.parentNode.insertBefore(wrap, sel);
+    wrap.appendChild(sel);
+    sel.classList.add("cs-native");
+
+    /* Button */
+    var btn = document.createElement("div");
+    btn.className = "cs-button";
+    btn.setAttribute("role", "button");
+    btn.setAttribute("tabindex", "0");
+    btn.innerHTML = '<span class="cs-text"></span><span class="cs-arrow">\u25BE</span>';
+    wrap.appendChild(btn);
+
+    /* Menu */
+    var menu = document.createElement("div");
+    menu.className = "cs-menu";
+    wrap.appendChild(menu);
+
+    function getSelectedText(){
+      if(sel.selectedIndex >= 0 && sel.options[sel.selectedIndex]){
+        return sel.options[sel.selectedIndex].textContent;
+      }
+      return "";
+    }
+    function updateButtonText(){
+      var t = getSelectedText();
+      var span = btn.querySelector(".cs-text");
+      if(span) span.textContent = t;
+    }
+
+    function buildMenu(){
+      menu.innerHTML = "";
+      /* Walk options (including optgroup children) */
+      var groups = sel.querySelectorAll("optgroup");
+      if(groups.length){
+        groups.forEach(function(g){
+          var glabel = document.createElement("div");
+          glabel.style.cssText = "padding:6px 10px 2px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05px";
+          glabel.textContent = g.label || "";
+          menu.appendChild(glabel);
+          g.querySelectorAll("option").forEach(function(o){
+            menu.appendChild(makeItem(o));
+          });
+        });
+      } else {
+        var opts = sel.querySelectorAll("option");
+        for(var i = 0; i < opts.length; i++){
+          menu.appendChild(makeItem(opts[i]));
+        }
+      }
+    }
+
+    function makeItem(opt){
+      var item = document.createElement("div");
+      item.className = "cs-item";
+      if(opt.selected) item.classList.add("selected");
+      item.innerHTML = '<span class="cs-label"></span><span class="cs-check">\u2713</span>';
+      item.querySelector(".cs-label").textContent = opt.textContent;
+      item.addEventListener("pointerdown", function(e){
+        e.stopPropagation();
+        e.preventDefault();
+        /* Set value on the native select */
+        opt.selected = true;
+        /* Trigger original handlers */
+        try{ sel.dispatchEvent(new Event("input",  {bubbles:true, cancelable:true})); }catch(_){}
+        try{ sel.dispatchEvent(new Event("change", {bubbles:true, cancelable:true})); }catch(_){}
+        updateButtonText();
+        closeOpenMenu();
+      });
+      return item;
+    }
+
+    function openMenu(){
+      closeOpenMenu();
+      buildMenu();
+
+      /* Measure button and viewport */
+      var rect = btn.getBoundingClientRect();
+      var vw = window.innerWidth  || document.documentElement.clientWidth;
+      var vh = window.innerHeight || document.documentElement.clientHeight;
+
+      /* Reset previous coordinates */
+      menu.style.top    = "";
+      menu.style.left   = "";
+      menu.style.right  = "";
+      menu.style.bottom = "";
+      menu.style.minWidth = "";
+
+      /* Make menu at least as wide as the button */
+      menu.style.minWidth = Math.round(rect.width) + "px";
+
+      /* Show menu temporarily to measure its natural size */
+      menu.style.display = "block";
+      menu.style.visibility = "hidden";
+      var mRect = menu.getBoundingClientRect();
+      menu.style.visibility = "";
+      menu.style.display = "";
+
+      var menuW = mRect.width;
+      var menuH = mRect.height;
+
+      /* Horizontal: default left = button.left. If overflows right, align
+         menu's right edge to button's right edge.                          */
+      var leftPos  = rect.left;
+      var rightPos = null;
+      if (leftPos + menuW > vw - 4) {
+        /* Try aligning right edge to button right edge */
+        rightPos = vw - rect.right;
+        if (rightPos < 0) rightPos = 0;
+        /* If still overflows on left, clamp left to 4 */
+        if ((vw - rightPos - menuW) < 4) {
+          leftPos = 4;
+          rightPos = null;
+        }
+      }
+      if (rightPos !== null) {
+        menu.style.right = rightPos + "px";
+      } else {
+        menu.style.left = leftPos + "px";
+      }
+
+      /* Vertical: prefer to show full height. Open downward by default;
+         if it doesn't fit, try upward; if neither fits, clamp to the
+         larger side and enable internal scrolling.                       */
+      var GAP       = 2;
+      var MARGIN    = 4;
+      var spaceDown = vh - rect.bottom - GAP - MARGIN;  /* available below button */
+      var spaceUp   = rect.top - GAP - MARGIN;          /* available above button */
+
+      /* Reset previous constraints */
+      menu.style.maxHeight = "";
+      menu.style.overflowY = "";
+
+      if (menuH <= spaceDown) {
+        /* Fits fully below */
+        menu.style.top    = (rect.bottom + GAP) + "px";
+        menu.style.bottom = "";
+      } else if (menuH <= spaceUp) {
+        /* Fits fully above */
+        menu.style.bottom = (vh - rect.top + GAP) + "px";
+        menu.style.top    = "";
+      } else {
+        /* Doesn't fit fully either way — use the larger side and clamp */
+        if (spaceDown >= spaceUp) {
+          menu.style.top       = (rect.bottom + GAP) + "px";
+          menu.style.bottom    = "";
+          menu.style.maxHeight = Math.floor(spaceDown) + "px";
+        } else {
+          menu.style.bottom    = (vh - rect.top + GAP) + "px";
+          menu.style.top       = "";
+          menu.style.maxHeight = Math.floor(spaceUp) + "px";
+        }
+        menu.style.overflowY = "auto";
+      }
+
+      menu.classList.add("open");
+      btn.classList.add("cs-open");
+      openMenuWrap = wrap;
+
+      /* Close on scroll/resize so menu doesn't detach from the button */
+      var onScrollOrResize = function(){ closeOpenMenu(); };
+      window.addEventListener("scroll", onScrollOrResize, true);
+      window.addEventListener("resize", onScrollOrResize);
+      /* Store for cleanup in closeOpenMenu */
+      openMenuWrap._cleanup = onScrollOrResize;
+
+      /* Defer attaching outside-click handler so the current pointerdown
+         doesn't immediately close the menu.                              */
+      setTimeout(function(){
+        document.addEventListener("pointerdown", onOutsideClick, true);
+        document.addEventListener("keydown", onEscape, true);
+      }, 0);
+    }
+
+    btn.addEventListener("pointerdown", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      if(menu.classList.contains("open")) closeOpenMenu();
+      else openMenu();
+    });
+    btn.addEventListener("keydown", function(e){
+      if(e.key === "Enter" || e.key === " "){
+        e.preventDefault();
+        if(menu.classList.contains("open")) closeOpenMenu();
+        else openMenu();
+      }
+    });
+
+    /* Initial render + listen for native changes. Re-renders create a fresh
+       select/button pair, so no polling is required. */
+    updateButtonText();
+    sel.addEventListener("change", updateButtonText);
+    sel.addEventListener("input",  updateButtonText);
+
+    /* Click on the label/value pair: in pair rows, the select may be moved
+       by combineRows after enhance — update text right after. */
+    requestAnimationFrame(updateButtonText);
+  }
+
+  function setupCustomSelects(){
+    /* Enhance ALL native <select> elements in the document — inspector,
+       canvas toolbar (Сетка / Масштаб), header (add-type-select), theme
+       preset, preset list, etc. Skip selects inside .canvas-element because
+       those are the canvas controls (button_1 / combo_1 / text_1 / tabs_1). */
+    var all = document.querySelectorAll("select:not(.cs-native)");
+    for(var i = 0; i < all.length; i++){
+      var sel = all[i];
+      /* Skip selects that are inside a canvas element */
+      if(sel.closest && sel.closest(".canvas-element")) continue;
+      enhanceSelect(sel);
+    }
+
+    /* Observe only the Inspector. Header/toolbar selects are enhanced by the
+       initial scan; dynamic Inspector selects are handled here. */
+    var inspector = document.getElementById("inspector-container");
+    if(inspector && !inspector._csObserver){
+      var mo = new MutationObserver(function(muts){
+        for(var i = 0; i < muts.length; i++){
+          for(var j = 0; j < muts[i].addedNodes.length; j++){
+            var n = muts[i].addedNodes[j];
+            if(n.nodeType !== 1) continue;
+            if(n.tagName === "SELECT" && !n.classList.contains("cs-native")) enhanceSelect(n);
+            if(n.querySelectorAll){
+              var ns = n.querySelectorAll("select:not(.cs-native)");
+              for(var k = 0; k < ns.length; k++) enhanceSelect(ns[k]);
+            }
+          }
+        }
+      });
+      mo.observe(inspector, {childList:true, subtree:true});
+      inspector._csObserver = mo;
+    }
+  }
+
+  /* ---------- 4) Custom combo_1 canvas menu ----------
+     The canvas combo uses the same custom menu style as inspector selects,
+     menu style as inspector selects, but driven by the combo element's own
+     settings (menuColor, menuBorderColor, menuCornerRadius, menuBorderWidth,
+     menuHoverColor) — so what you see on canvas is exactly what will apply. */
+  var cbMenuEl = null;
+
+  function closeComboMenuCustom(){
+    if(cbMenuEl){
+      if(cbMenuEl._cleanup){
+        cbMenuEl._cleanup();
+        cbMenuEl._cleanup = null;
+      }
+      cbMenuEl.remove();
+      cbMenuEl = null;
+    }
+  }
+
+  function openComboMenuCustom(el, anchor){
+    closeComboMenuCustom();
+
+    var opts = (el.options || "").split(",").map(function(s){return s.trim();}).filter(Boolean);
+    if(!opts.length) return;
+
+    var menu = document.createElement("div");
+    menu.className = "cb-menu";
+
+    /* Apply combo element's own menu settings via CSS custom properties */
+    menu.style.setProperty("--cb-bg", el.menuColor        || "#1d1f24");
+    menu.style.setProperty("--cb-bc", el.menuBorderColor  || "#32363f");
+    menu.style.setProperty("--cb-br", (num(el.menuCornerRadius) || 6) + "px");
+    menu.style.setProperty("--cb-bw", (num(el.menuBorderWidth)  || 1) + "px");
+    menu.style.setProperty("--cb-hc", el.menuHoverColor   || "#2a2e36");
+    /* Font size from element */
+    menu.style.fontSize = (el.fontSize || 12) + "px";
+
+    opts.forEach(function(opt, i){
+      var item = document.createElement("div");
+      item.className = "cb-item";
+      if(i + 1 === el.value) item.classList.add("selected");
+
+      var label = document.createElement("span");
+      label.className = "cb-label";
+      label.textContent = opt;
+
+      var check = document.createElement("span");
+      check.className = "cb-check";
+      check.textContent = "\u2713";
+
+      item.appendChild(label);
+      item.appendChild(check);
+
+      item.addEventListener("pointerdown", function(e){
+        e.stopPropagation();
+        e.preventDefault();
+        el.value = i + 1;
+        closeComboMenuCustom();
+        /* Match original behaviour: re-render canvas + sync inspector/code */
+        renderCanvas();
+        updateInspectorAndCode();
+      });
+
+      menu.appendChild(item);
+    });
+
+    document.body.appendChild(menu);
+
+    /* === Positioning (mirrors inspector cs-menu logic) === */
+    var rect = anchor.getBoundingClientRect();
+    var vw = window.innerWidth  || document.documentElement.clientWidth;
+    var vh = window.innerHeight || document.documentElement.clientHeight;
+
+    /* Reset */
+    menu.style.top = "";
+    menu.style.left = "";
+    menu.style.right = "";
+    menu.style.bottom = "";
+    menu.style.maxHeight = "";
+    menu.style.overflowY = "";
+    menu.style.minWidth = "";
+
+    /* At least as wide as the button */
+    menu.style.minWidth = Math.round(rect.width) + "px";
+
+    /* Measure natural size */
+    menu.style.display = "block";
+    menu.style.visibility = "hidden";
+    var mRect = menu.getBoundingClientRect();
+    menu.style.visibility = "";
+    menu.style.display = "";
+    var menuW = mRect.width, menuH = mRect.height;
+
+    /* Horizontal: align to button left; if overflows right, align right edges */
+    var leftPos  = rect.left;
+    var rightPos = null;
+    if(leftPos + menuW > vw - 4){
+      rightPos = vw - rect.right;
+      if(rightPos < 0) rightPos = 0;
+      if((vw - rightPos - menuW) < 4){
+        leftPos = 4;
+        rightPos = null;
+      }
+    }
+    if(rightPos !== null) menu.style.right = rightPos + "px";
+    else menu.style.left = leftPos + "px";
+
+    /* Vertical: full height preferred; flip up if needed; clamp only if neither fits */
+    var GAP = 2, MARGIN = 4;
+    var spaceDown = vh - rect.bottom - GAP - MARGIN;
+    var spaceUp   = rect.top - GAP - MARGIN;
+
+    if(menuH <= spaceDown){
+      menu.style.top    = (rect.bottom + GAP) + "px";
+      menu.style.bottom = "";
+    } else if(menuH <= spaceUp){
+      menu.style.bottom = (vh - rect.top + GAP) + "px";
+      menu.style.top    = "";
+    } else {
+      if(spaceDown >= spaceUp){
+        menu.style.top       = (rect.bottom + GAP) + "px";
+        menu.style.bottom    = "";
+        menu.style.maxHeight = Math.floor(spaceDown) + "px";
+      } else {
+        menu.style.bottom    = (vh - rect.top + GAP) + "px";
+        menu.style.top       = "";
+        menu.style.maxHeight = Math.floor(spaceUp) + "px";
+      }
+      menu.style.overflowY = "auto";
+    }
+
+    menu.classList.add("open");
+    cbMenuEl = menu;
+
+    /* Outside-click / Escape / scroll-close handlers */
+    var onDocDown = function(e){
+      if(!menu.contains(e.target) && !anchor.contains(e.target)) closeComboMenuCustom();
+    };
+    var onEsc = function(e){ if(e.key === "Escape") closeComboMenuCustom(); };
+    var onScrollOrResize = function(){ closeComboMenuCustom(); };
+
+    /* Defer attaching outside-click so the current pointerdown doesn't close it */
+    setTimeout(function(){
+      document.addEventListener("pointerdown", onDocDown, true);
+      document.addEventListener("keydown",     onEsc,     true);
+      window.addEventListener("scroll", onScrollOrResize, true);
+      window.addEventListener("resize", onScrollOrResize);
+    }, 0);
+
+    cbMenuEl._cleanup = function(){
+      document.removeEventListener("pointerdown", onDocDown, true);
+      document.removeEventListener("keydown",     onEsc,     true);
+      window.removeEventListener("scroll", onScrollOrResize, true);
+      window.removeEventListener("resize", onScrollOrResize);
+    };
+
+    /* Also close when the anchor (combo button) is removed from DOM (e.g. on re-render) */
+    var anchorObserver = new MutationObserver(function(){
+      if(!document.body.contains(anchor)) closeComboMenuCustom();
+    });
+    anchorObserver.observe(document.body, {childList:true, subtree:true});
+    var origCleanup = cbMenuEl._cleanup;
+    cbMenuEl._cleanup = function(){
+      anchorObserver.disconnect();
+      origCleanup();
+    };
+  }
+
+  function overrideComboMenu(){
+    window.openComboMenu = openComboMenuCustom;
+  }
+
+  /* ---------- 5) Combine adjacent Inspector rows (X+Y, etc.) ---------- */
+  /* Pairs of consecutive prop-rows whose labels match these names are merged
+     into a single row with two label+input groups.                          */
+  var PAIRS = [
+    ["X", "Y"],
+    ["\u0428\u0438\u0440\u0438\u043D\u0430", "\u0412\u044B\u0441\u043E\u0442\u0430"],   /* Ширина / Высота */
+    ["\u0421\u0432\u0435\u0440\u0445\u0443", "\u0421\u043D\u0438\u0437\u0443"],         /* Сверху / Снизу */
+    ["\u0421\u043B\u0435\u0432\u0430", "\u0421\u043F\u0440\u0430\u0432\u0430"],         /* Слева / Справа */
+    ["Min", "Max"],
+    ["Step", "Value"]
+  ];
+
+  function labelText(row){
+    var l = row.querySelector(".prop-label");
+    return l ? (l.textContent || "").trim() : "";
+  }
+
+  function combineRows(){
+    var container = document.getElementById("inspector-container");
+    if(!container) return;
+    /* Run multiple passes — each pass merges the first matching pair it finds.
+       Iterating until no more merges happen handles overlapping cases.       */
+    var changed = true;
+    var safety = 0;
+    while(changed && safety < 20){
+      changed = false;
+      safety++;
+      var rows = container.querySelectorAll(".prop-row");
+      for(var p = 0; p < PAIRS.length; p++){
+        var l1 = PAIRS[p][0], l2 = PAIRS[p][1];
+        for(var i = 0; i < rows.length - 1; i++){
+          var r1 = rows[i], r2 = rows[i + 1];
+          if(r1.classList.contains("prop-row-pair")) continue;
+          if(r2.classList.contains("prop-row-pair")) continue;
+          /* r2 must immediately follow r1 in the DOM (no sibling between) */
+          if(r1.nextElementSibling !== r2) continue;
+          if(labelText(r1) !== l1 || labelText(r2) !== l2) continue;
+          /* Move label + input from r2 into r1 */
+          var lbl = r2.querySelector(".prop-label");
+          var inp = r2.querySelector(".prop-input");
+          if(!lbl || !inp) break;
+          r1.appendChild(lbl);
+          r1.appendChild(inp);
+          r1.classList.add("prop-row-pair");
+          r2.remove();
+          changed = true;
+          break;
+        }
+        if(changed) break;
+      }
+    }
+    /* After merging, re-run auto-resize for the moved inputs so they keep
+       their content-fit width (now within a paired row).                     */
+    var pairedInputs = container.querySelectorAll(".prop-row-pair .prop-input");
+    for(var k = 0; k < pairedInputs.length; k++){
+      if(typeof resizeInput === "function") resizeInput(pairedInputs[k]);
+    }
+  }
+
+  /* Wrap the original renderInspector so combine runs after every render.   */
+  function wrapRenderInspector(){
+    if(typeof window.renderInspector !== "function") return;
+    if(window.renderInspector.__combined) return;
+    var orig = window.renderInspector;
+    var wrapped = function(){
+      orig.apply(this, arguments);
+      combineRows();
+      /* After combineRows may have moved selects around, enhance any new ones */
+      if(typeof setupCustomSelects === "function") setupCustomSelects();
+    };
+    wrapped.__combined = true;
+    window.renderInspector = wrapped;
+  }
+
+  /* ---------- 6) Auto-resize Inspector inputs ---------- */
+  /* Width of input adapts to its content + 4 characters worth of width.   */
+  var measurer = document.createElement("span");
+  measurer.style.cssText = "visibility:hidden;position:absolute;white-space:pre;pointer-events:none;left:-9999px;top:-9999px;";
+  document.documentElement.appendChild(measurer);
+
+  function resizeInput(input){
+    if(!input || input.tagName !== "INPUT") return;
+    var t = input.type || "text";
+    if(t === "color" || t === "checkbox" || t === "radio" || t === "file") return;
+    var cs = window.getComputedStyle(input);
+    measurer.style.font = cs.font;
+    measurer.style.letterSpacing = cs.letterSpacing;
+    var val = String(input.value || input.placeholder || "");
+    // Add 4 chars worth of width (use '0' as a typical-width character)
+    measurer.textContent = val + "0000";
+    var textW = measurer.getBoundingClientRect().width;
+    var pad   = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    var bord  = parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+    var total = Math.ceil(textW + pad + bord + 2);
+    input.style.width = total + "px";
+  }
+
+  function bindInput(input){
+    if(!input || input.tagName !== "INPUT") return;
+    if(input.dataset.arBound === "1") { resizeInput(input); return; }
+    input.dataset.arBound = "1";
+    resizeInput(input);
+    input.addEventListener("input", function(){ resizeInput(input); });
+  }
+
+  function scanNode(node){
+    if(!node || node.nodeType !== 1) return;
+    if(node.classList && node.classList.contains("prop-input")) bindInput(node);
+    var inputs = node.querySelectorAll ? node.querySelectorAll(".prop-input") : null;
+    if(inputs) for(var i=0;i<inputs.length;i++) bindInput(inputs[i]);
+  }
+
+  function setupAutoResize(){
+    var inspector = document.getElementById("inspector-container");
+    if(!inspector) return;
+    scanNode(inspector);
+    var mo = new MutationObserver(function(muts){
+      for(var i=0;i<muts.length;i++){
+        var m = muts[i];
+        for(var j=0;j<m.addedNodes.length;j++) scanNode(m.addedNodes[j]);
+      }
+    });
+    mo.observe(inspector, {childList:true, subtree:true});
+  }
+
+  function init(){
+    setupToggleCode();
+    wrapPanelToggles();
+    wrapRenderInspector();
+    setupAutoResize();
+    setupCustomSelects();
+    overrideComboMenu();
+    /* Combine once for the initial render produced by window.onload */
+    combineRows();
+  }
+
+  if(document.readyState === "complete" || document.readyState === "interactive"){
+    // Wait for the main script's window.onload to finish first
+    setTimeout(init, 0);
+  } else {
+    window.addEventListener("load", function(){ setTimeout(init, 0); });
+  }
+})();
+</script>
+</body>
+</html>
