@@ -333,7 +333,7 @@ const FONT_WEIGHTS=[
   {value:"700",name:"Полужирный"},{value:"900",name:"Чёрный"}
 ];
 function cssFont(f){if(f==="system"||!f)return"system-ui";if(f==="Courier New")return"'Courier New',monospace";if(f==="Consolas")return"Consolas,monospace";return f}
-function cppFontField(f,w,h){const name=(f==="system"||!f)?"juce::Font::getDefaultSansSerifFontName()":"\""+f+"\"";const style=(parseInt(w)||500)>=700?"juce::Font::FontStyleFlags::bold":"juce::Font::FontStyleFlags::plain";return"juce::Font(juce::FontOptions().withName("+name+").withHeight("+f1(h)+").withStyle("+style+"))"}
+function cppFontField(f,w,h){const name=(f==="system"||!f)?"juce::Font::getDefaultSansSerifFontName()":"\""+f+"\"";const style=(parseInt(w)||500)>=700?"juce::Font::bold":"juce::Font::plain";return"juce::Font("+name+", "+f1(h)+", "+style+")"}
 let state={version:30,mode:"edit",zoom:"1.0",gridSnap:10,showLeftSidebar:true,showRightSidebar:true,showFrame:true,canvasWidth:800,canvasHeight:520,canvasColor:"#1d1f24",
   theme:{name:"Bitwig Dark",colors:{...THEMES["Bitwig Dark"]}},elements:[],selectedId:null,rightTab:"element",dirHandle:null,dirName:"",presets:{}};
 let statusTimer=null;
@@ -1263,7 +1263,7 @@ function generatePluginEditorH(){
   s+="    std::vector<std::unique_ptr<juce::Component>> canvasElements;\n\n";
   s+="    void buildCanvas();\n";
   s+="    void layoutCanvas();\n\n";
-  s+="    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginAudioProcessorEditor)\n";
+  s+="    JUCE_DECLARE_NON_COPYABLE (PluginAudioProcessorEditor)\n";
   s+="};\n";
   return s;
 }
@@ -1329,7 +1329,7 @@ function generateLookAndFeelH(){
   s+="#include <JuceHeader.h>\n\n";
   s+="// Shared visual defaults for the whole JUCE 9 plugin UI.\n";
   s+="// This file is intentionally not tied to any individual Canvas element.\n";
-  s+="class PluginLookAndFeel : public juce::LookAndFeel_V4\n";
+  s+="class PluginLookAndFeel : public juce::LookAndFeel\n";
   s+="{\n";
   s+="public:\n";
   s+="    PluginLookAndFeel();\n";
@@ -1346,7 +1346,7 @@ function generateLookAndFeelH(){
   s+="    juce::Colour popupHighlightedBackground { juce::Colours::darkgrey };\n";
   s+="    float popupCornerRadius = 6.0f;\n";
   s+="    float popupBorderWidth = 1.0f;\n\n";
-  s+="    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginLookAndFeel)\n";
+  s+="    JUCE_DECLARE_NON_COPYABLE (PluginLookAndFeel)\n";
   s+="};\n";
   return s;
 }
