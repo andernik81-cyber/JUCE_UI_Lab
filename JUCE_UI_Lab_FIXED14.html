@@ -300,7 +300,8 @@
           <div class="code-tab" data-code-tab="all">Все файлы</div>
         </div>
         <div class="spacer"></div>
-        <button id="btn-download-code" title="Скачать текущий файл">📥 Скачать</button>
+        <button id="btn-download-code" title="Скачать ZIP со всеми файлами">📥 Скачать ZIP</button>
+        <button id="btn-download-single" title="Скачать только этот HTML файл (JUCE 9 Fixed)">⬇️ Скачать HTML</button>
         <button id="btn-copy-code">📋 Копировать</button>
       </div>
       <pre class="code-content" id="code-output"></pre>
@@ -1547,6 +1548,29 @@ function setupEventListeners(){
     a.href=url;a.download=fileName;a.click();
     URL.revokeObjectURL(url);
     status("Файл "+fileName+" скачан");
+  };
+  
+  // Кнопка скачивания самого HTML файла (JUCE 9 Fixed версия)
+  document.getElementById("btn-download-single").onclick=()=>{
+    fetch(window.location.href)
+      .then(r=>r.blob())
+      .then(b=>{
+        const url=URL.createObjectURL(b);
+        const a=document.createElement("a");
+        a.href=url;a.download="JUCE_UI_Lab_FIXED14_JUCE9.html";a.click();
+        URL.revokeObjectURL(url);
+        status("HTML файл скачан!");
+      })
+      .catch(()=>{
+        // Fallback: сохраняем текущий документ
+        const htmlContent=document.documentElement.outerHTML;
+        const blob=new Blob([htmlContent],{type:"text/html;charset=utf-8"});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url;a.download="JUCE_UI_Lab_FIXED14_JUCE9.html";a.click();
+        URL.revokeObjectURL(url);
+        status("HTML файл скачан!");
+      });
   };
   document.getElementById("btn-download-json").onclick=()=>{const d="data:text/json;charset=utf-8,"+encodeURIComponent(getProjectJSON());const a=document.createElement("a");a.setAttribute("href",d);a.setAttribute("download","juce_ui_layout.json");a.click();status("JSON сохранён!")};
   document.getElementById("btn-import-json").onclick=()=>{document.getElementById("file-input").click()};
